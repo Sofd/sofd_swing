@@ -32,8 +32,9 @@ import javax.swing.event.ListSelectionListener;
  * Component that displays a list of items in a rectangular grid with a fixed
  * number of rows and columns. Aims to behave like a {@link JList} from the
  * perspective of the programmer (not necessarily the end user look&feel),
- * provides additional methods for changing the number of rows/columns
- * programmatically.
+ * provides additional methods for changing programmatically, at any time,
+ * the number of rows/columns, the start of the interval of elements to display,
+ * etc.
  * <p>
  * Just like {@link JList}, a JGridList is provided with the items to display
  * via a {@link ListModel}.
@@ -197,6 +198,25 @@ public class JGridList extends JPanel {
         this.remove(childIndex);
     }
 
+    /**
+     *
+     * @param modelIndex modelIndex
+     * @return the component (created by this list's component factory) that currently
+     *         displays the model element at index modelIndex. null if that element
+     *         isn't currently visible.
+     */
+    public JComponent getComponentFor(int modelIndex) {
+        if (model != null && modelIndex < model.getSize()) {
+            int displayedCount = nRows * nCols;
+            int childIndex = modelIndex - getFirstDisplayedIdx();
+            if (childIndex >= 0 && childIndex < displayedCount) {
+                JPanel container = (JPanel)this.getComponent(childIndex);
+                return (JComponent)container.getComponent(0);
+            }
+        }
+        return null;
+    }
+
     public void refresh() {
         deleteUI();
         reInitEmptyUI();
@@ -244,6 +264,15 @@ public class JGridList extends JPanel {
         return componentFactory;
     }
 
+    /**
+     * Sets or re-sets the JGridList's component factory, which is consulted
+     * to create the JComponents that make up the cells of the list. Setting
+     * the component factory while the list is already displayed will initiate
+     * a complete refresh of the UI, including a re-creation of all the cell
+     * components.
+     *
+     * @param componentFactory
+     */
     public void setComponentFactory(GridListComponentFactory componentFactory) {
         if (componentFactory == this.componentFactory) { return; }
         deleteUI();
@@ -251,10 +280,20 @@ public class JGridList extends JPanel {
         reInitEmptyUI();
     }
 
+    /**
+     *
+     * @return start of currently displayed interval of model elements
+     */
     public int getFirstDisplayedIdx() {
         return firstDisplayedIdx;
     }
 
+    /**
+     * Programmatically "scrolls" the JGridList to a different position by
+     * setting the index of the first model element to display.
+     *
+     * @param newValue the new index
+     */
     public void setFirstDisplayedIdx(int newValue) {
         if (newValue == this.firstDisplayedIdx) { return; }
         
@@ -284,22 +323,49 @@ public class JGridList extends JPanel {
         revalidate();
     }
 
+    /**
+     *
+     * @return currently displayed number of grid rows
+     */
     public int getRowCount() {
         return nRows;
     }
 
+    /**
+     * Sets the number of displayed grid rows to a new value and
+     * refreshes the UI appropriately.
+     *
+     * @param rows
+     */
     public void setRowCount(int rows) {
         setGridSizes(rows, nCols);
     }
 
+    /**
+     *
+     * @return currently displayed number of grid columns
+     */
     public int getColumnCount() {
         return nCols;
     }
 
+    /**
+     * Sets the number of displayed grid columns to a new value and
+     * refreshes the UI appropriately.
+     *
+     * @param cols
+     */
     public void setColumnCount(int cols) {
         setGridSizes(nRows, cols);
     }
     
+    /**
+     * Sets the displayed grid dimensions (row count & column count) to new
+     * values and refreshes the UI appropriately.
+     *
+     * @param newNRows
+     * @param newNCols
+     */
     public void setGridSizes(int newNRows, int newNCols) {
         if (newNRows <= 0 || newNCols <= 0) {
             throw new IllegalArgumentException("rowCount, columnCount must be > 0");
