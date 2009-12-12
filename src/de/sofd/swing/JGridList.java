@@ -487,6 +487,9 @@ public class JGridList extends JPanel {
 
     public int findModelIndexAt(Point p) {
         Component child = findComponentAt(p);
+        if (null == child) {
+            return -1;
+        }
 
         // child may be an arbitrarily deeply nested grand...child of us.
         // find the ancestor of child that's a direct child of us
