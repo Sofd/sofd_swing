@@ -303,19 +303,38 @@ public class JGridList extends JPanel {
         //reInitEmptyUI();
         
         if (null != model) {
-            int displayedCount = getRowCount() * getColumnCount();
-            if (newValue < firstDisplayedIdx) {
-                int shift = Math.min(firstDisplayedIdx - newValue, displayedCount);
-                for (int i = 0; i < shift; i++) {
-                    removeComponent(firstDisplayedIdx + displayedCount - 1 - i, displayedCount - 1);
-                    addComponent(newValue + shift - 1 - i, 0);
+            if (componentFactory.canReuseComponents()) {
+                // TODO: use optimized implementation that reuses components
+                int displayedCount = getRowCount() * getColumnCount();
+                if (newValue < firstDisplayedIdx) {
+                    int shift = Math.min(firstDisplayedIdx - newValue, displayedCount);
+                    for (int i = 0; i < shift; i++) {
+                        removeComponent(firstDisplayedIdx + displayedCount - 1 - i, displayedCount - 1);
+                        addComponent(newValue + shift - 1 - i, 0);
+                    }
+                } else {
+                    assert(newValue > firstDisplayedIdx);
+                    int shift = Math.min(newValue - firstDisplayedIdx, displayedCount);
+                    for (int i = 0; i < shift; i++) {
+                        removeComponent(firstDisplayedIdx + i, 0);
+                        addComponent(newValue + displayedCount - shift + i, displayedCount - 1);
+                    }
                 }
             } else {
-                assert(newValue > firstDisplayedIdx);
-                int shift = Math.min(newValue - firstDisplayedIdx, displayedCount);
-                for (int i = 0; i < shift; i++) {
-                    removeComponent(firstDisplayedIdx + i, 0);
-                    addComponent(newValue + displayedCount - shift + i, displayedCount - 1);
+                int displayedCount = getRowCount() * getColumnCount();
+                if (newValue < firstDisplayedIdx) {
+                    int shift = Math.min(firstDisplayedIdx - newValue, displayedCount);
+                    for (int i = 0; i < shift; i++) {
+                        removeComponent(firstDisplayedIdx + displayedCount - 1 - i, displayedCount - 1);
+                        addComponent(newValue + shift - 1 - i, 0);
+                    }
+                } else {
+                    assert(newValue > firstDisplayedIdx);
+                    int shift = Math.min(newValue - firstDisplayedIdx, displayedCount);
+                    for (int i = 0; i < shift; i++) {
+                        removeComponent(firstDisplayedIdx + i, 0);
+                        addComponent(newValue + displayedCount - shift + i, displayedCount - 1);
+                    }
                 }
             }
         }
@@ -375,6 +394,8 @@ public class JGridList extends JPanel {
         //this.nRows = newNRows;
         //this.nCols = newNCols;
         //reInitEmptyUI();
+
+        // TODO: use optimized implementation if componentFactory.canReuseComponents()
 
         int oldDisplayedCount = getRowCount() * getColumnCount();
         int newDisplayedCount = newNRows * newNCols;

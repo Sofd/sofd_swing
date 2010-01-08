@@ -6,8 +6,10 @@ import java.awt.event.ActionEvent;
 
 import javax.swing.AbstractAction;
 import javax.swing.DefaultListModel;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
@@ -17,7 +19,10 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import de.sofd.swing.DefaultGridListComponentFactory;
+import de.sofd.swing.GridListComponentFactory;
 import de.sofd.swing.JGridList;
+import java.awt.event.ActionListener;
+import javax.swing.JCheckBox;
 
 
 public class GridListTestApp {
@@ -39,7 +44,7 @@ public class GridListTestApp {
         for (int i=0; i<50; ++i) {
             listModel.addElement("element "+i);
         }
-        gridList = new JGridList(listModel, new DefaultGridListComponentFactory());
+        gridList = new JGridList(listModel, nonComponentReusingComponentFactory);
         f.getContentPane().add(gridList, BorderLayout.CENTER);
         // TODO: DefaultGridListComponentFactory selection visualization doesn't work
         //   (background colors are always reset??)
@@ -159,9 +164,43 @@ public class GridListTestApp {
                 }
             }
         });
-        
+        final JCheckBox reuseCompsCb = new JCheckBox("reuseCellComps");
+        toolbar.add(reuseCompsCb);
+        reuseCompsCb.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (reuseCompsCb.isSelected()) {
+                    gridList.setComponentFactory(componentReusingComponentFactory);
+                } else {
+                    gridList.setComponentFactory(nonComponentReusingComponentFactory);
+                }
+            }
+        });
     }
-    
+
+    private GridListComponentFactory nonComponentReusingComponentFactory = new DefaultGridListComponentFactory();
+
+    private GridListComponentFactory componentReusingComponentFactory = new DefaultGridListComponentFactory() {
+        @Override
+        public boolean canReuseComponents() {
+            return true;
+        }
+        @Override
+        public JComponent createComponent(JGridList source, JPanel parent, Object modelItem) {
+            if (parent.getComponentCount() == 0) {
+                System.out.println("creating new cell component for model element: " + modelItem);
+                JLabel l = new JLabel(""+modelItem);
+                parent.add(l);
+                return l;
+            } else {
+                System.out.println("reusing existing cell component for model element: " + modelItem);
+                JLabel l = (JLabel) parent.getComponent(0);
+                l.setText("" + modelItem);
+                return l;
+            }
+        }
+    };
+
     /**
      * @param args
      */

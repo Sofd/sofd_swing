@@ -95,4 +95,6 @@ public interface GridListComponentFactory {
      *            components itself
      */
     void deleteComponent(JGridList source, JPanel parent, Object modelItem, JComponent component);
+
+    boolean canReuseComponents();
 }

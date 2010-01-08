@@ -34,4 +34,9 @@ public abstract class AbstractFramedSelectionGridListComponentFactory implements
         // do nothing; leave it to the default behaviour
     }
 
+    @Override
+    public boolean canReuseComponents() {
+        return false;
+    }
+
 }
