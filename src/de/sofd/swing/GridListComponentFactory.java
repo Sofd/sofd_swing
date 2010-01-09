@@ -16,12 +16,21 @@ import javax.swing.JPanel;
 public interface GridListComponentFactory {
     /**
      * Called whenever a GUI component representing an item in the
-     * {@link JGridList} needs to be created.
+     * {@link JGridList} needs to be created (or reused -- see below).
      * <p>
      * The component should be created such that it visualizes the item in the
      * unselected state. If the component is to show a "selected" state,
      * {@link #setSelectedStatus(JGridList, JPanel, Object, boolean, JComponent) setSelectedStatus}
      * will be called immediately afterwards.
+     * <p>
+     * If {@link #canReuseComponents() } is true, this method <i>may</i> be called
+     * to reuse a previously created component for displaying modelItem, rather
+     * that creating a new component. These two cases can be told apart by checking
+     * whether parent contains a child component. If it does, that's the component
+     * to be reused -- i.e., #createComponent() may modify that child component
+     * to represent modelItem. If there's no child component in parent, no reusing
+     * can take place, and createComponent must create a new child component in
+     * parent for representing modelItem.
      * 
      * @param source
      *            JGridList for which the component is to be created
@@ -96,5 +105,24 @@ public interface GridListComponentFactory {
      */
     void deleteComponent(JGridList source, JPanel parent, Object modelItem, JComponent component);
 
+    /**
+     * Tell whether or not this GridListComponentFactory supports reusing the JComponent
+     * it creates (via {@link #createComponent(de.sofd.swing.JGridList, javax.swing.JPanel, java.lang.Object) })
+     * for other model elements later. If this method returns false, the JGridList will always call
+     * #createComponent with an empty "parent" JPanel, and #createComponent must create and new
+     * component in the parent for representing the model element. If canReuseComponents()
+     * returns true, the JGridList <i>may</i> call #createComponent with a "parent" JPanel
+     * that contains a previously created component representing a different model element
+     * (the one that was previously being represented by that component).
+     * This gives the component factory the opportunity to <i>modify</i> this existing
+     * component to represent the newly passed modelItem. This can be beneficial for performance
+     * if creating new components is expensive and reusing existing ones is cheap.
+     * <p>
+     *
+     * <p>
+     * The return value of this method should not change through the lifetime of <i>this</i>.
+     *
+     * @return
+     */
     boolean canReuseComponents();
 }

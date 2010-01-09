@@ -23,6 +23,7 @@ import de.sofd.swing.GridListComponentFactory;
 import de.sofd.swing.JGridList;
 import java.awt.event.ActionListener;
 import javax.swing.JCheckBox;
+import javax.swing.SwingUtilities;
 
 
 public class GridListTestApp {
@@ -205,7 +206,12 @@ public class GridListTestApp {
      * @param args
      */
     public static void main(String[] args) {
-        new GridListTestApp();
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                new GridListTestApp();
+            }
+        });
     }
 
 }

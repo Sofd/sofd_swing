@@ -163,7 +163,7 @@ public class JGridList extends JPanel {
         int displayedCount = nRows * nCols;
         for (int childIndex = displayedCount - 1; childIndex >= 0; childIndex--) {
             int modelIndex = firstDisplayedIdx + childIndex;
-            removeComponent(modelIndex, childIndex);
+            removeComponent(modelIndex, childIndex, true);
         }
         revalidate();
     }
@@ -186,7 +186,41 @@ public class JGridList extends JPanel {
         copyUiStateToSubComponent(childIndex);
     }
     
-    private void removeComponent(int modelIndex, int childIndex) {
+    private void setComponent(int modelIndex, int prevModelIndex, int childIndex) {
+        if (componentFactory != null) {
+            JPanel container = (JPanel)this.getComponent(childIndex);
+            if (modelIndex < 0) {   // modelIndex == -1 => set container at childIndex to "no model element"
+                JComponent component = (JComponent)container.getComponent(0);
+                if (prevModelIndex >= 0) {
+                    if (container.getComponentCount() > 0) {
+                        Object modelItem = model.getElementAt(prevModelIndex);
+                        componentFactory.deleteComponent(this, container, modelItem, component);
+                        if (container.getComponentCount() > 0) {
+                            container.remove(0);
+                        }
+                        container.repaint();
+                    }
+                } else {
+                    componentFactory.createComponent(this, container, null);
+                }
+            } else {
+                if (model != null && modelIndex < model.getSize()) {
+                    Object modelItem = model.getElementAt(modelIndex);
+                    JComponent comp = componentFactory.createComponent(this, container, modelItem);
+                    comp.setVisible(true);
+                    componentFactory.setSelectedStatus
+                            (this,
+                             container,
+                             modelItem,
+                             selectionModel != null && selectionModel.isSelectedIndex(modelIndex),
+                             comp);
+                }
+            }
+            copyUiStateToSubComponent(childIndex);
+        }
+    }
+
+    private void removeComponent(int modelIndex, int childIndex, boolean removeContainer) {
         JPanel container = (JPanel)this.getComponent(childIndex);
         if (model != null && modelIndex < model.getSize() && componentFactory != null) {
             Object modelItem = model.getElementAt(modelIndex);
@@ -195,7 +229,9 @@ public class JGridList extends JPanel {
                 componentFactory.deleteComponent(this, container, modelItem, component);
             }
         }
-        this.remove(childIndex);
+        if (removeContainer) {
+            this.remove(childIndex);
+        }
     }
 
     /**
@@ -303,36 +339,28 @@ public class JGridList extends JPanel {
         //reInitEmptyUI();
         
         if (null != model) {
+            int displayedCount = getRowCount() * getColumnCount();
             if (componentFactory.canReuseComponents()) {
-                // TODO: use optimized implementation that reuses components
-                int displayedCount = getRowCount() * getColumnCount();
-                if (newValue < firstDisplayedIdx) {
-                    int shift = Math.min(firstDisplayedIdx - newValue, displayedCount);
-                    for (int i = 0; i < shift; i++) {
-                        removeComponent(firstDisplayedIdx + displayedCount - 1 - i, displayedCount - 1);
-                        addComponent(newValue + shift - 1 - i, 0);
-                    }
-                } else {
-                    assert(newValue > firstDisplayedIdx);
-                    int shift = Math.min(newValue - firstDisplayedIdx, displayedCount);
-                    for (int i = 0; i < shift; i++) {
-                        removeComponent(firstDisplayedIdx + i, 0);
-                        addComponent(newValue + displayedCount - shift + i, displayedCount - 1);
-                    }
+                for (int i = 0; i < displayedCount; i++) {
+                    int prevModelIndex = firstDisplayedIdx + i;
+                    int modelIndex = newValue + i;
+                    int modelSize = model.getSize();
+                    setComponent(modelIndex < modelSize ? modelIndex : -1,
+                                 prevModelIndex < modelSize ? prevModelIndex : -1,
+                                 i);
                 }
             } else {
-                int displayedCount = getRowCount() * getColumnCount();
                 if (newValue < firstDisplayedIdx) {
                     int shift = Math.min(firstDisplayedIdx - newValue, displayedCount);
                     for (int i = 0; i < shift; i++) {
-                        removeComponent(firstDisplayedIdx + displayedCount - 1 - i, displayedCount - 1);
+                        removeComponent(firstDisplayedIdx + displayedCount - 1 - i, displayedCount - 1, true);
                         addComponent(newValue + shift - 1 - i, 0);
                     }
                 } else {
                     assert(newValue > firstDisplayedIdx);
                     int shift = Math.min(newValue - firstDisplayedIdx, displayedCount);
                     for (int i = 0; i < shift; i++) {
-                        removeComponent(firstDisplayedIdx + i, 0);
+                        removeComponent(firstDisplayedIdx + i, 0, true);
                         addComponent(newValue + displayedCount - shift + i, displayedCount - 1);
                     }
                 }
@@ -409,7 +437,8 @@ public class JGridList extends JPanel {
             } else if (newDisplayedCount < oldDisplayedCount) {
                 for (int i = 0; i < (oldDisplayedCount - newDisplayedCount); i++) {
                     removeComponent(firstDisplayedIdx + oldDisplayedCount - 1 - i,
-                                    oldDisplayedCount - 1 - i);
+                                    oldDisplayedCount - 1 - i,
+                                    true);
                 }
             }
         }
