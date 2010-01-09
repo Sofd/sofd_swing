@@ -190,18 +190,20 @@ public class JGridList extends JPanel {
         if (componentFactory != null) {
             JPanel container = (JPanel)this.getComponent(childIndex);
             if (modelIndex < 0) {   // modelIndex == -1 => set container at childIndex to "no model element"
-                JComponent component = (JComponent)container.getComponent(0);
-                if (prevModelIndex >= 0) {
-                    if (container.getComponentCount() > 0) {
-                        Object modelItem = model.getElementAt(prevModelIndex);
-                        componentFactory.deleteComponent(this, container, modelItem, component);
+                if (container.getComponentCount() > 0) {   // == (prevModelIndex >= 0)
+                    JComponent component = (JComponent)container.getComponent(0);
+                    if (prevModelIndex >= 0) {
                         if (container.getComponentCount() > 0) {
-                            container.remove(0);
+                            Object modelItem = model.getElementAt(prevModelIndex);
+                            componentFactory.deleteComponent(this, container, modelItem, component);
+                            if (container.getComponentCount() > 0) {
+                                container.remove(0);
+                            }
+                            container.repaint();
                         }
-                        container.repaint();
+                    } else {
+                        componentFactory.createComponent(this, container, null);
                     }
-                } else {
-                    componentFactory.createComponent(this, container, null);
                 }
             } else {
                 if (model != null && modelIndex < model.getSize()) {
