@@ -13,9 +13,13 @@ public abstract class AbstractFramedSelectionGridListComponentFactory implements
     private Border unselectedBorder, selectedBorder;
 
     public AbstractFramedSelectionGridListComponentFactory() {
+        this (new EmptyBorder(2,2,2,2), new LineBorder(Color.YELLOW, 2));
+    }
+
+    public AbstractFramedSelectionGridListComponentFactory(Border unselectedBorder, Border selectedBorder) {
         super();
-        unselectedBorder = new EmptyBorder(2,2,2,2);
-        selectedBorder = new LineBorder(Color.YELLOW, 2);
+        this.unselectedBorder = unselectedBorder;
+        this.selectedBorder = selectedBorder;
     }
 
     @Override
