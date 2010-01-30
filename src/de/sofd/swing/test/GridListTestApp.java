@@ -177,6 +177,15 @@ public class GridListTestApp {
                 }
             }
         });
+        final JCheckBox showScrollbarCb = new JCheckBox("ScrBar");
+        toolbar.add(showScrollbarCb);
+        showScrollbarCb.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                gridList.setShowScrollbar(showScrollbarCb.isSelected());
+            }
+        });
+        showScrollbarCb.setSelected(gridList.isShowScrollbar());
     }
 
     private GridListComponentFactory nonComponentReusingComponentFactory = new DefaultGridListComponentFactory();

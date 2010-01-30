@@ -1,5 +1,6 @@
 package de.sofd.swing;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -19,6 +20,7 @@ import javax.swing.InputMap;
 import javax.swing.JComponent;
 import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.JScrollBar;
 import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListModel;
@@ -54,6 +56,9 @@ public class JGridList extends JPanel {
     private int firstDisplayedIdx = 0;
     private int nRows = 4, nCols = 4;
 
+    private final JPanel cellsContainer;
+    private JScrollBar scrollBar = null;
+
     private ListSelectionModel selectionModel;
 
     private boolean followSelection = true;
@@ -82,6 +87,10 @@ public class JGridList extends JPanel {
     }
     
     public JGridList() {
+        setLayout(new BorderLayout());
+        cellsContainer = new JPanel();
+        this.add(cellsContainer, BorderLayout.CENTER);
+        setShowScrollbar(true);
         reInitEmptyUI();
         copyUiStateToSubComponents();
         setupUiInteractions();
@@ -103,6 +112,24 @@ public class JGridList extends JPanel {
         );
     }
     
+    public boolean isShowScrollbar() {
+        return scrollBar != null;
+    }
+    
+    public void setShowScrollbar(boolean show) {
+        if (show == isShowScrollbar()) {
+            return;
+        }
+        if (show) {
+            scrollBar = new JScrollBar(JScrollBar.VERTICAL);
+            this.add(scrollBar, BorderLayout.EAST);
+        } else {
+            this.remove(scrollBar);
+            scrollBar = null;
+        }
+        revalidate();
+    }
+    
     protected void copyUiStateToSubComponents() {
         for (int i = 0; i < this.getComponentCount(); i++) {
             copyUiStateToSubComponent(i);
@@ -111,7 +138,7 @@ public class JGridList extends JPanel {
     
     protected void copyUiStateToSubComponent(int childIndex) {
         if (this.getComponentCount() > childIndex) {
-            Component c = this.getComponent(childIndex);
+            Component c = cellsContainer.getComponent(childIndex);
             c.setBackground(getBackground());
             if (c instanceof Container && componentFactory != null) {
                 Container cont = (Container)c;
@@ -142,11 +169,11 @@ public class JGridList extends JPanel {
     }
 
     /**
-     * @pre we're empty (no child components)
+     * @pre we're empty (cellsContainer contains no child components)
      * @post UI is initialized according to our current member variable values
      */
     private void reInitEmptyUI() {
-        setLayout(new GridLayout(nRows, nCols));
+        cellsContainer.setLayout(new GridLayout(nRows, nCols));
         int displayedCount = nRows * nCols;
         for (int childIndex = 0; childIndex < displayedCount; childIndex++) {
             int modelIndex = firstDisplayedIdx + childIndex;
@@ -182,16 +209,16 @@ public class JGridList extends JPanel {
                      selectionModel != null && selectionModel.isSelectedIndex(modelIndex),
                      comp);
         }
-        this.add(container, childIndex);
+        cellsContainer.add(container, childIndex);
         copyUiStateToSubComponent(childIndex);
     }
     
     private void setComponent(int modelIndex, int prevModelIndex, int childIndex) {
         if (componentFactory != null) {
-            JPanel container = (JPanel)this.getComponent(childIndex);
+            JPanel container = (JPanel) cellsContainer.getComponent(childIndex);
             if (modelIndex < 0) {   // modelIndex == -1 => set container at childIndex to "no model element"
                 if (container.getComponentCount() > 0) {   // == (prevModelIndex >= 0)
-                    JComponent component = (JComponent)container.getComponent(0);
+                    JComponent component = (JComponent) container.getComponent(0);
                     if (prevModelIndex >= 0) {
                         if (container.getComponentCount() > 0) {
                             Object modelItem = model.getElementAt(prevModelIndex);
@@ -223,16 +250,16 @@ public class JGridList extends JPanel {
     }
 
     private void removeComponent(int modelIndex, int childIndex, boolean removeContainer) {
-        JPanel container = (JPanel)this.getComponent(childIndex);
+        JPanel container = (JPanel) cellsContainer.getComponent(childIndex);
         if (model != null && modelIndex < model.getSize() && componentFactory != null) {
             Object modelItem = model.getElementAt(modelIndex);
             if (container.getComponentCount() > 0) { // may be 0 if e.g. the model grew since last reInitEmptyUI()
-                JComponent component = (JComponent)container.getComponent(0);
+                JComponent component = (JComponent) container.getComponent(0);
                 componentFactory.deleteComponent(this, container, modelItem, component);
             }
         }
         if (removeContainer) {
-            this.remove(childIndex);
+            cellsContainer.remove(childIndex);
         }
     }
 
@@ -248,8 +275,8 @@ public class JGridList extends JPanel {
             int displayedCount = nRows * nCols;
             int childIndex = modelIndex - getFirstDisplayedIdx();
             if (childIndex >= 0 && childIndex < displayedCount) {
-                JPanel container = (JPanel)this.getComponent(childIndex);
-                return (JComponent)container.getComponent(0);
+                JPanel container = (JPanel) cellsContainer.getComponent(childIndex);
+                return (JComponent) container.getComponent(0);
             }
         }
         return null;
@@ -429,7 +456,7 @@ public class JGridList extends JPanel {
 
         int oldDisplayedCount = getRowCount() * getColumnCount();
         int newDisplayedCount = newNRows * newNCols;
-        setLayout(new GridLayout(newNRows, newNCols));
+        cellsContainer.setLayout(new GridLayout(newNRows, newNCols));
         if (null != model) {
             if (newDisplayedCount > oldDisplayedCount) {
                 for (int i = 0; i < (newDisplayedCount - oldDisplayedCount); i++) {
@@ -477,8 +504,8 @@ public class JGridList extends JPanel {
                     int modelIdx = firstDisplayedIdx + childIdx;
                     if (modelIdx >= 0 && modelIdx < model.getSize()) {
                         Object modelItem = model.getElementAt(modelIdx);
-                        JPanel container = (JPanel)JGridList.this.getComponent(childIdx);
-                        JComponent comp = (JComponent)container.getComponent(0);
+                        JPanel container = (JPanel) cellsContainer.getComponent(childIdx);
+                        JComponent comp = (JComponent) container.getComponent(0);
                         componentFactory.setSelectedStatus
                             (JGridList.this,
                              container,
@@ -544,16 +571,16 @@ public class JGridList extends JPanel {
         }
 
         // child may be an arbitrarily deeply nested grand...child of us.
-        // find the ancestor of child that's a direct child of us
-        while (child != this && child.getParent() != this && child.getParent() != null) {
+        // find the ancestor of child that's a direct child of cellsContainer, if any
+        while (child != this && child.getParent() != this && child.getParent() != cellsContainer && child.getParent() != null) {
             child = child.getParent();
         }
-        if (child == null || child == this) {
+        if (child == null || child == this || child == cellsContainer) {
             return -1;
         }
         
         int childIndex = -1;
-        Component[] children = this.getComponents();
+        Component[] children = cellsContainer.getComponents();
         for (int i = 0; i < children.length; ++i) {
             if (child == children[i]) {
                 childIndex = i;
