@@ -15,6 +15,7 @@ import javax.swing.AbstractAction;
 import javax.swing.AbstractListModel;
 import javax.swing.Action;
 import javax.swing.ActionMap;
+import javax.swing.BoundedRangeModel;
 import javax.swing.DefaultListSelectionModel;
 import javax.swing.InputMap;
 import javax.swing.JComponent;
@@ -25,6 +26,8 @@ import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionEvent;
@@ -123,10 +126,13 @@ public class JGridList extends JPanel {
         if (show) {
             scrollBar = new JScrollBar(JScrollBar.VERTICAL);
             this.add(scrollBar, BorderLayout.EAST);
+            scrollBar.getModel().addChangeListener(scrollbarChangeListener);
         } else {
             this.remove(scrollBar);
+            scrollBar.getModel().removeChangeListener(scrollbarChangeListener);
             scrollBar = null;
         }
+        updateScrollbar();
         revalidate();
     }
     
@@ -179,6 +185,7 @@ public class JGridList extends JPanel {
             int modelIndex = firstDisplayedIdx + childIndex;
             addComponent(modelIndex, childIndex);
         }
+        updateScrollbar();
         revalidate();
     }
     
@@ -396,6 +403,7 @@ public class JGridList extends JPanel {
             }
         }
         this.firstDisplayedIdx = newValue;
+        updateScrollbar();
         revalidate();
     }
 
@@ -473,6 +481,7 @@ public class JGridList extends JPanel {
         }
         this.nRows = newNRows;
         this.nCols = newNCols;
+        updateScrollbar();
         revalidate();
     }
 
@@ -531,6 +540,65 @@ public class JGridList extends JPanel {
             }
         }
     }
+
+    /**
+     * need our own valueIsAdjusting for the scrollbar instead of using
+     * scrollBar.getModel().getValueIsAdjusting() because we want to be able to
+     * tell the difference between the user dragging the thumb (we want to
+     * update the display during that) and our own temporarily invalid
+     * scrollModel value settings in updateScrollbar() (we do NOT want to update
+     * the display during that)
+     */
+    private boolean internalScrollbarValueIsAdjusting = false;
+    
+    private void updateScrollbar() {
+        if (null == scrollBar) {
+            return;
+        }
+        if (null == model) {
+            scrollBar.setEnabled(false);
+            return;
+        }
+        if (! scrollBar.isEnabled()) {
+            scrollBar.setEnabled(true);
+        }
+        int size = model.getSize();
+        int firstDispIdx = getFirstDisplayedIdx();
+        int displayedCount = getRowCount() * getColumnCount();
+        int lastDispIdx = firstDispIdx + displayedCount - 1;
+        if (lastDispIdx >= size) {
+            lastDispIdx = size - 1;
+        }
+        BoundedRangeModel scrollModel = scrollBar.getModel();
+        internalScrollbarValueIsAdjusting = true;
+        scrollModel.setMinimum(0);
+        scrollModel.setMaximum(size - 1);
+        scrollModel.setValue(firstDispIdx);
+        scrollModel.setExtent(displayedCount - 1);
+        internalScrollbarValueIsAdjusting = false;
+        scrollBar.setUnitIncrement(getColumnCount());
+        scrollBar.setBlockIncrement(displayedCount);
+    }
+    
+    private ChangeListener scrollbarChangeListener = new ChangeListener() {
+        private boolean inCall = false;
+        @Override
+        public void stateChanged(ChangeEvent e) {
+            if (inCall) { return; }
+            inCall = true;
+            try {
+                BoundedRangeModel scrollModel = scrollBar.getModel();
+                if (internalScrollbarValueIsAdjusting) { return; }
+                //System.out.println("scrollbar changed: " + scrollModel);
+                setFirstDisplayedIdx(scrollModel.getValue());
+            } finally {
+                inCall = false;
+            }
+        }
+    };
+    
+    // TODO: row-wise scrolling instead of cell-wise scrolling
+    
     
     public void ensureIndexIsVisible(int idx) {
         if (null == model) {

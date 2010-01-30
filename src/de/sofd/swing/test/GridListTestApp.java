@@ -45,7 +45,14 @@ public class GridListTestApp {
         for (int i=0; i<50; ++i) {
             listModel.addElement("element "+i);
         }
-        gridList = new JGridList(listModel, nonComponentReusingComponentFactory);
+
+        //gridList = new JGridList(listModel, nonComponentReusingComponentFactory);
+        
+        // try to trigger former ArrayIndexOutOfBoundsException bug in scrollbar handling with zero-size models:
+        // (see comment on private internalScrollbarValueIsAdjusting member variable in JGridList)
+        gridList = new JGridList(new DefaultListModel(), nonComponentReusingComponentFactory);
+        gridList.setModel(listModel);
+        
         f.getContentPane().add(gridList, BorderLayout.CENTER);
         // TODO: DefaultGridListComponentFactory selection visualization doesn't work
         //   (background colors are always reset??)
