@@ -294,6 +294,21 @@ public class JGridList extends JPanel {
         reInitEmptyUI();
     }
     
+    public void repaintCells() {
+        if (model != null) {
+            int displayedCount = nRows * nCols;
+            for (int i = 0; i < displayedCount; i++) {
+                JComponent c = (JComponent) cellsContainer.getComponent(i);
+                if (c != null) {
+                    Component c2 = c.getComponent(0);
+                    if (c2 != null) {
+                        c2.repaint();
+                    }
+                }
+            }
+        }
+    }
+    
     public ListModel getModel() {
         return model;
     }
