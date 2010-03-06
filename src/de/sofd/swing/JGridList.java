@@ -692,9 +692,10 @@ public class JGridList extends JPanel {
                 int clickedModelIndex = findModelIndexAt(e.getPoint());
                 if (clickedModelIndex != -1) {
                     if ((e.getModifiersEx() & MouseEvent.CTRL_DOWN_MASK) == 0) {
-                        getSelectionModel().clearSelection();
+                        getSelectionModel().addSelectionInterval(clickedModelIndex, clickedModelIndex);
+                    } else {
+                        getSelectionModel().setSelectionInterval(clickedModelIndex, clickedModelIndex);
                     }
-                    getSelectionModel().addSelectionInterval(clickedModelIndex, clickedModelIndex);
                 }
             }
         });
@@ -737,8 +738,7 @@ public class JGridList extends JPanel {
         if (idx != -1) {
             idx += shift;
             if (idx >= 0 && idx < model.getSize()) {
-                getSelectionModel().clearSelection();
-                getSelectionModel().addSelectionInterval(idx, idx);
+                getSelectionModel().setSelectionInterval(idx, idx);
             }
         }
     }
