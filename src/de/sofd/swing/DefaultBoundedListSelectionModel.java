@@ -1,10 +1,14 @@
 package de.sofd.swing;
 
 import javax.swing.DefaultListSelectionModel;
-import javax.swing.ListSelectionModel;
 import javax.swing.event.ListSelectionListener;
 
 
+/**
+ * Default {@link BoundedListSelectionModel}.
+ * 
+ * @author olaf
+ */
 public class DefaultBoundedListSelectionModel implements BoundedListSelectionModel {
 
     protected DefaultListSelectionModel backend = new DefaultListSelectionModel();
@@ -18,65 +22,48 @@ public class DefaultBoundedListSelectionModel implements BoundedListSelectionMod
 
     @Override
     public void addSelectionInterval(int index0, int index1) {
-        System.out.println("addSelectionInterval("+index0+", "+index1+")");
         int[] newInterval = intersect(new int[]{index0, index1}, bounds);
         if (newInterval != null) {
             backend.addSelectionInterval(newInterval[0], newInterval[1]);
         }
     }
 
-    /* (non-Javadoc)
-     * @see de.sofd.swing.BoundedListSelectionModel#getLowerBound()
-     */
+    @Override
     public int getLowerBound() {
         return bounds[0];
     }
     
-    /* (non-Javadoc)
-     * @see de.sofd.swing.BoundedListSelectionModel#setLowerBound(int)
-     */
+    @Override
     public void setLowerBound(int lowerBound) {
         setBounds(lowerBound, bounds[1]);
     }
     
-    /* (non-Javadoc)
-     * @see de.sofd.swing.BoundedListSelectionModel#disableLowerBound()
-     */
+    @Override
     public void disableLowerBound() {
         setLowerBound(Integer.MIN_VALUE);
     }
     
-    /* (non-Javadoc)
-     * @see de.sofd.swing.BoundedListSelectionModel#getUpperBound()
-     */
+    @Override
     public int getUpperBound() {
         return bounds[1];
     }
     
-    /* (non-Javadoc)
-     * @see de.sofd.swing.BoundedListSelectionModel#setUpperBound(int)
-     */
+    @Override
     public void setUpperBound(int upperBound) {
         setBounds(bounds[0], upperBound);
     }
     
-    /* (non-Javadoc)
-     * @see de.sofd.swing.BoundedListSelectionModel#disableUpperBound()
-     */
+    @Override
     public void disableUpperBound() {
         setUpperBound(Integer.MAX_VALUE);
     }
     
-    /* (non-Javadoc)
-     * @see de.sofd.swing.BoundedListSelectionModel#getBounds()
-     */
+    @Override
     public int[] getBounds() {
         return new int[] {bounds[0], bounds[1]};
     }
     
-    /* (non-Javadoc)
-     * @see de.sofd.swing.BoundedListSelectionModel#setBounds(int, int)
-     */
+    @Override
     public void setBounds(int lower, int upper) {
         if (lower > upper) {
             this.bounds[0] = Integer.MIN_VALUE;
@@ -88,16 +75,13 @@ public class DefaultBoundedListSelectionModel implements BoundedListSelectionMod
         clipToBounds();
     }
     
-    /* (non-Javadoc)
-     * @see de.sofd.swing.BoundedListSelectionModel#disableBounds()
-     */
+    @Override
     public void disableBounds() {
         setBounds(Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
     
     @Override
     public void clearSelection() {
-        System.out.println("clearSelection()");
         backend.clearSelection();
     }
 
@@ -138,7 +122,6 @@ public class DefaultBoundedListSelectionModel implements BoundedListSelectionMod
 
     @Override
     public void insertIndexInterval(int index, int length, boolean before) {
-        System.out.println("insertIndexInterval("+index+", "+length+","+before+")");
         backend.insertIndexInterval(index, length, before);
     }
 
@@ -154,7 +137,6 @@ public class DefaultBoundedListSelectionModel implements BoundedListSelectionMod
 
     @Override
     public void removeIndexInterval(int index0, int index1) {
-        System.out.println("removeIndexInterval("+index0+", "+index1+")");
         backend.removeIndexInterval(index0, index1);
     }
 
@@ -165,25 +147,21 @@ public class DefaultBoundedListSelectionModel implements BoundedListSelectionMod
 
     @Override
     public void removeSelectionInterval(int index0, int index1) {
-        System.out.println("removeSelectionInterval("+index0+", "+index1+")");
         backend.removeSelectionInterval(index0, index1);
     }
 
     @Override
     public void setAnchorSelectionIndex(int anchorIndex) {
-        System.out.println("setAnchorSelectionIndex("+anchorIndex+")");
         backend.setAnchorSelectionIndex(anchorIndex);
     }
 
     @Override
     public void setLeadSelectionIndex(int leadIndex) {
-        System.out.println("setLeadSelectionIndex("+leadIndex+")");
         backend.setLeadSelectionIndex(leadIndex);
     }
 
     @Override
     public void setSelectionInterval(int index0, int index1) {
-        System.out.println("setSelectionInterval("+index0+", "+index1+")");
         int[] newInterval = intersect(new int[]{index0, index1}, bounds);
         if (newInterval != null) {
             backend.setSelectionInterval(newInterval[0], newInterval[1]);
@@ -197,7 +175,6 @@ public class DefaultBoundedListSelectionModel implements BoundedListSelectionMod
 
     @Override
     public void setValueIsAdjusting(boolean isAdjusting) {
-        System.out.println("     setValueIsAdjusting("+isAdjusting+")");
         backend.setValueIsAdjusting(isAdjusting);
     }
     
@@ -251,4 +228,5 @@ public class DefaultBoundedListSelectionModel implements BoundedListSelectionMod
             range[0] = tmp;
         }
     }
+
 }

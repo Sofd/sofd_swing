@@ -2,6 +2,13 @@ package de.sofd.swing;
 
 import javax.swing.ListSelectionModel;
 
+/**
+ * Interface for {@link ListSelectionModel}s that have optional upper and/or
+ * lower bounds for their selection.
+ * 
+ * @author olaf
+ * 
+ */
 public interface BoundedListSelectionModel extends ListSelectionModel {
 
     public abstract int getLowerBound();
