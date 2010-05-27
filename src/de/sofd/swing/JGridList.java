@@ -134,6 +134,7 @@ public class JGridList extends JPanel {
         }
         updateScrollbar();
         revalidate();
+        validate();
     }
     
     protected void copyUiStateToSubComponents() {
@@ -187,6 +188,7 @@ public class JGridList extends JPanel {
         }
         updateScrollbar();
         revalidate();
+        validate();
     }
     
     /**
@@ -200,6 +202,7 @@ public class JGridList extends JPanel {
             removeComponent(modelIndex, childIndex, true);
         }
         revalidate();
+        validate();
     }
 
     private void addComponent(int modelIndex, int childIndex) {
@@ -417,6 +420,7 @@ public class JGridList extends JPanel {
         this.firstDisplayedIdx = newValue;
         updateScrollbar();
         revalidate();
+        validate();
     }
 
     /**
@@ -495,6 +499,7 @@ public class JGridList extends JPanel {
         this.nCols = newNCols;
         updateScrollbar();
         revalidate();
+        validate();
     }
 
     public ListSelectionModel getSelectionModel() {
