@@ -7,7 +7,7 @@ import javax.swing.text.DocumentFilter;
 
 /**
  * JTextComponent textComp = new JTextField();
- * textComp.setDocument(new FixedSizePlainDocument(10));
+ * textComp.setDocument(new FixedSizeFilter(10));
  *
  * @author sofd GmbH
  */
