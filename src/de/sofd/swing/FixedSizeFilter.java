@@ -6,8 +6,9 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
 
 /**
- * JTextComponent textComp = new JTextField();
- * textComp.setDocument(new FixedSizeFilter(10));
+ * JTextComponent textComponent = new JTextField();
+ * AbstractDocument doc = (AbstractDocument)textComponent.getDocument();
+ * doc.setDocumentFilter(new FixedSizeFilter(10));
  *
  * @author sofd GmbH
  */
@@ -35,4 +36,3 @@ public class FixedSizeFilter extends DocumentFilter {
         }
     }
 }
-
