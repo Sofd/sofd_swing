@@ -568,6 +568,9 @@ public class JGridList extends JPanel {
             return;
         }
         if (null == model || model.getSize() == 0) {
+            internalScrollbarValueIsAdjusting = true;
+            scrollBar.getModel().setRangeProperties(0, 0, 0, 0, false);
+            internalScrollbarValueIsAdjusting = false;
             scrollBar.setEnabled(false);
             return;
         }
