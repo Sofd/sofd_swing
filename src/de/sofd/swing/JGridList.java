@@ -567,7 +567,7 @@ public class JGridList extends JPanel {
         if (null == scrollBar) {
             return;
         }
-        if (null == model) {
+        if (null == model || model.getSize() == 0) {
             scrollBar.setEnabled(false);
             return;
         }
