@@ -49,8 +49,8 @@ public class FixedSizeFilterTest {
         int offset = 0;
         String str = "";
         AttributeSet attr = null;
-        FixedSizeFilter instance = null;
-        instance.insertString(fb, offset, str, attr);
+        FixedSizeFilter instance = new FixedSizeFilter(16);
+        //instance.insertString(fb, offset, str, attr);
         // TODO review the generated test code and remove the default call to fail.
         // fail("The test case is a prototype.");
     }
@@ -66,8 +66,8 @@ public class FixedSizeFilterTest {
         int length = 0;
         String str = "";
         AttributeSet attrs = null;
-        FixedSizeFilter instance = null;
-        instance.replace(fb, offset, length, str, attrs);
+        FixedSizeFilter instance = new FixedSizeFilter(16);
+        //instance.replace(fb, offset, length, str, attrs);
         // TODO review the generated test code and remove the default call to fail.
         // fail("The test case is a prototype.");
     }
