@@ -118,6 +118,7 @@ public class PopupMenuLayout implements java.awt.LayoutManager {
         }
     }
 
+
     /**
      * Calculates the minimum size dimensions for the specified
      * container, given the components it contains.
