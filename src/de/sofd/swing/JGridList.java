@@ -17,6 +17,7 @@ import javax.swing.Action;
 import javax.swing.ActionMap;
 import javax.swing.BoundedRangeModel;
 import javax.swing.DefaultListSelectionModel;
+import javax.swing.DropMode;
 import javax.swing.InputMap;
 import javax.swing.JComponent;
 import javax.swing.JList;
@@ -65,6 +66,9 @@ public class JGridList extends JPanel {
     private ListSelectionModel selectionModel;
 
     private boolean followSelection = true;
+    
+    private boolean dragEnabled = false;
+    private DropMode dropMode = DropMode.ON_OR_INSERT;
     
     // invariants (conditions that hold whenever the outside code
     // can interact with this component):
@@ -682,6 +686,32 @@ public class JGridList extends JPanel {
         return modelIndex < model.getSize() ? modelIndex : -1;
     }
     
+    public void setDragEnabled(boolean b) {
+        dragEnabled = b;
+    }
+
+    public boolean getDragEnabled() {
+        return dragEnabled;
+    }
+
+    public final void setDropMode(DropMode dropMode) {
+        if (dropMode != null) {
+            switch (dropMode) {
+                case ON:
+                case INSERT:
+                case ON_OR_INSERT:
+                    this.dropMode = dropMode;
+                    return;
+            }
+        }
+
+        throw new IllegalArgumentException(dropMode + ": Unsupported drop mode for JGridList");
+    }
+    
+    public DropMode getDropMode() {
+        return dropMode;
+    }
+
     //// setting up default (built-in) interactive UI actions the user may
     //// user to change the list (e.g. clicking to select, cursor key).
     //// subclasses may override.
