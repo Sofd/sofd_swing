@@ -6,6 +6,8 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.GridLayout;
 import java.awt.Point;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -27,6 +29,7 @@ import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
+import javax.swing.TransferHandler;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.ListDataEvent;
@@ -97,6 +100,7 @@ public class JGridList extends JPanel {
         setLayout(new BorderLayout());
         cellsContainer = new JPanel();
         this.add(cellsContainer, BorderLayout.CENTER);
+        cellsContainer.setTransferHandler(new CellsContainerTransferHandler());
         setShowScrollbar(true);
         reInitEmptyUI();
         copyUiStateToSubComponents();
@@ -523,6 +527,22 @@ public class JGridList extends JPanel {
         reInitEmptyUI();
     }
 
+    public Object[] getSelectedValues() {
+        ListSelectionModel sm = getSelectionModel();
+        int minSI = sm.getMinSelectionIndex();
+        int maxSI = sm.getMaxSelectionIndex();
+        Object[] tmp = new Object[1 + (maxSI - minSI)];
+        int n = 0;
+        for (int i = minSI; i <= maxSI; i++) {
+            if (sm.isSelectedIndex(i)) {
+                tmp[n++] = getModel().getElementAt(i);
+            }
+        }
+        Object[] result = new Object[n];
+        System.arraycopy(tmp, 0, result, 0, n);
+        return result;
+    }
+    
     private ListSelectionListener listSelectionListener = new ListSelectionListener() {
 
         @Override
@@ -686,6 +706,8 @@ public class JGridList extends JPanel {
         return modelIndex < model.getSize() ? modelIndex : -1;
     }
     
+    //// Drag&Drop support
+    
     public void setDragEnabled(boolean b) {
         dragEnabled = b;
     }
@@ -711,11 +733,54 @@ public class JGridList extends JPanel {
     public DropMode getDropMode() {
         return dropMode;
     }
+    
+    public static class DropLocation extends TransferHandler.DropLocation {
+        private int index;
+        private boolean isInsert;
+        
+        public DropLocation(Point p) {
+            super(p);
+        }
+        
+        public int getIndex() {
+            return index;
+        }
+        
+        public boolean isInsert() {
+            return isInsert;
+        }
+        
+    }
+    
+    //TODO: recognize drag gesture on cellsContainer
+    
+    private class CellsContainerTransferHandler extends TransferHandler {
+        //TODO: delegate to the JGridList's TransferHandler
+        @Override
+        protected Transferable createTransferable(JComponent c) {
+            StringBuffer txt = new StringBuffer(30);
+            boolean start = true;
+            for (Object elt : getSelectedValues()) {
+                if (!start) {
+                    txt.append("\n");
+                }
+                txt.append(elt.toString());
+                start = false;
+            }
+            return new StringSelection(txt.toString());
+        }
+    }
 
-    //// setting up default (built-in) interactive UI actions the user may
-    //// user to change the list (e.g. clicking to select, cursor key).
-    //// subclasses may override.
+    //TODO: provide code to create DropLocations for points, to be used by drop handlers in subclasses/user code
+    //      How to account for the getDropMode()? Consult JList for inspiration
 
+    //// default UI interactions
+
+    /**
+     * Called during initialization for setting up default interactive UI
+     * actions the user may use to change the list (e.g. clicking to select,
+     * cursor key). Subclasses may override.
+     */
     protected void setupUiInteractions() {
         this.setFocusable(true);
         
