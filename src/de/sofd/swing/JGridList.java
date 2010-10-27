@@ -1,5 +1,6 @@
 package de.sofd.swing;
 
+import java.awt.AWTEvent;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -100,10 +101,11 @@ public class JGridList extends JPanel {
         setLayout(new BorderLayout());
         cellsContainer = new JPanel();
         this.add(cellsContainer, BorderLayout.CENTER);
-        cellsContainer.setTransferHandler(new CellsContainerTransferHandler());
+        setTransferHandler(new DefaultTransferHandler(this));
         setShowScrollbar(true);
         reInitEmptyUI();
         copyUiStateToSubComponents();
+        enableEvents(AWTEvent.MOUSE_EVENT_MASK|AWTEvent.MOUSE_MOTION_EVENT_MASK);
         setupUiInteractions();
         setSelectionModel(createSelectionModel());
         setComponentFactory(new DefaultGridListComponentFactory());
@@ -716,6 +718,10 @@ public class JGridList extends JPanel {
         return dragEnabled;
     }
 
+    public boolean isDragEnabled() {
+        return dragEnabled;
+    }
+
     public final void setDropMode(DropMode dropMode) {
         if (dropMode != null) {
             switch (dropMode) {
@@ -752,15 +758,20 @@ public class JGridList extends JPanel {
         
     }
     
-    //TODO: recognize drag gesture on cellsContainer
-    
-    private class CellsContainerTransferHandler extends TransferHandler {
-        //TODO: delegate to the JGridList's TransferHandler
+    public static class DefaultTransferHandler extends TransferHandler {
+        protected JGridList list;
+        public DefaultTransferHandler(JGridList list) {
+            this.list = list;
+        }
+        @Override
+        public int getSourceActions(JComponent c) {
+            return COPY|MOVE;
+        }
         @Override
         protected Transferable createTransferable(JComponent c) {
             StringBuffer txt = new StringBuffer(30);
             boolean start = true;
-            for (Object elt : getSelectedValues()) {
+            for (Object elt : list.getSelectedValues()) {
                 if (!start) {
                     txt.append("\n");
                 }
@@ -770,6 +781,60 @@ public class JGridList extends JPanel {
             return new StringSelection(txt.toString());
         }
     }
+
+    // drag gesture recognition
+    
+    private Point lastPressed = null;
+    
+    @Override
+    protected void processMouseEvent(MouseEvent e) {
+        super.processMouseEvent(e);
+        if (e.isConsumed()) { //TODO: isConsumed() is still false here even if mouse event handlers on the list consume the event
+            return;
+        }
+        if (!isDragEnabled()) {
+            return;
+        }
+        switch (e.getID()) {
+        case MouseEvent.MOUSE_PRESSED:
+            lastPressed = e.getPoint();
+            break;
+
+        default:
+            lastPressed = null;
+        }
+    }
+    
+    @Override
+    protected void processMouseMotionEvent(MouseEvent e) {
+        super.processMouseMotionEvent(e);
+        if (e.isConsumed()) {
+            return;
+        }
+        if (!isDragEnabled()) {
+            return;
+        }
+        switch (e.getID()) {
+        case MouseEvent.MOUSE_DRAGGED:
+            if (lastPressed != null) {
+                if (e.getPoint().distance(lastPressed) > 5) {
+                    TransferHandler th = getTransferHandler();
+                    if (th != null) {
+                        //int action = (0 != (e.getModifiers() & MouseEvent.CTRL_MASK) ? TransferHandler.COPY : TransferHandler.MOVE);
+                        int action = TransferHandler.COPY;
+                        System.out.println("DRAG");
+                        th.exportAsDrag(this, e, action);
+                    }
+                    lastPressed = null;
+                }
+            }
+            break;
+
+        default:
+            lastPressed = null;
+        }
+    }
+
 
     //TODO: provide code to create DropLocations for points, to be used by drop handlers in subclasses/user code
     //      How to account for the getDropMode()? Consult JList for inspiration

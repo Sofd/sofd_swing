@@ -52,6 +52,7 @@ public class JGridListDndTestApp {
             // (see comment on private internalScrollbarValueIsAdjusting member variable in JGridList)
             gridList = new JGridList(new DefaultListModel(), nonComponentReusingComponentFactory);
             gridList.setModel(listModel);
+            gridList.setDragEnabled(true);
             
             getContentPane().add(gridList, BorderLayout.CENTER);
             // TODO: DefaultGridListComponentFactory selection visualization doesn't work
