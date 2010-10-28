@@ -30,6 +30,7 @@ import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -760,7 +761,20 @@ public class JGridList extends JPanel {
         }
         
     }
-    
+
+    /**
+     * Internal transfer handler for the cellsContainer. The idea is to initiate
+     * low-level stuff like drop location rendering from here and delegate
+     * high-level stuff to the JGridList's TransferHandler. This will hopefully
+     * lead to a situation where users of the JGridList can replace the
+     * JGridList's TransferHandler without making the low-level stuff stop
+     * working (so JGridList's DnD behavior more closely resembles JList's). The
+     * information hiding probably isn't perfect -- ideally, we wouldn't use
+     * TransferHandlers internally at all, resorting to the low-level DnD API
+     * instead
+     * (http://download.oracle.com/javase/1.5.0/docs/guide/dragndrop/spec/dnd1.html).
+     * This was deemed too complicated for now, though.
+     */
     protected TransferHandler cellsContainerTransferHandler = new TransferHandler() {
         @Override
         public int getSourceActions(JComponent c) {
@@ -768,16 +782,12 @@ public class JGridList extends JPanel {
         }
         @Override
         protected Transferable createTransferable(JComponent c) {
-            StringBuffer txt = new StringBuffer(30);
-            boolean start = true;
-            for (Object elt : getSelectedValues()) {
-                if (!start) {
-                    txt.append("\n");
-                }
-                txt.append(elt.toString());
-                start = false;
+            TransferHandler listTH = JGridList.this.getTransferHandler();
+            if (listTH != null) {
+                return (Transferable) Misc.callMethod(listTH, "createTransferable", c);
+            } else {
+                return null;
             }
-            return new StringSelection(txt.toString());
         }
     };
 
@@ -786,16 +796,35 @@ public class JGridList extends JPanel {
         public DefaultTransferHandler(JGridList list) {
             this.list = list;
         }
+        @Override
+        protected Transferable createTransferable(JComponent c) {
+            StringBuffer txt = new StringBuffer(30);
+            boolean start = true;
+            for (Object elt : list.getSelectedValues()) {
+                if (!start) {
+                    txt.append("\n");
+                }
+                txt.append(elt.toString());
+                start = false;
+            }
+            return new StringSelection(txt.toString());
+        }
     }
 
     // drag gesture recognition
+
+    //recognize drag gestures in the JGridList's processMouse*Event methods rather than
+    //in the CellContainer's for now because doing the latter would prevent the events
+    //from bubbling up to the JGridList (so outside parties would no longer receive
+    //mouse events on the JGridList). We might manually re-dispatch the events on the
+    //JGridList to prevent that, though
     
     private Point lastPressed = null;
     
     @Override
     protected void processMouseEvent(MouseEvent e) {
         super.processMouseEvent(e);
-        if (e.isConsumed()) { //TODO: isConsumed() is still false here even if mouse event handlers on the list consume the event
+        if (e.isConsumed()) {
             return;
         }
         if (!isDragEnabled()) {
@@ -826,10 +855,7 @@ public class JGridList extends JPanel {
                 if (e.getPoint().distance(lastPressed) > 5) {
                     //int action = (0 != (e.getModifiers() & MouseEvent.CTRL_MASK) ? TransferHandler.COPY : TransferHandler.MOVE);
                     int action = TransferHandler.COPY;
-                    System.out.println("DRAG");
-                    MouseEvent cce = Misc.deepCopy(e);
-                    cce.setSource(cellsContainer);
-                    cellsContainerTransferHandler.exportAsDrag(cellsContainer, cce, action);
+                    cellsContainerTransferHandler.exportAsDrag(cellsContainer, SwingUtilities.convertMouseEvent(cellsContainer, e, this), action);
                     lastPressed = null;
                 }
             }
