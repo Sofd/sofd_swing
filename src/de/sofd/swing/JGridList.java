@@ -38,6 +38,8 @@ import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
+import de.sofd.util.Misc;
+
 /**
  * Component that displays a list of items in a rectangular grid with a fixed
  * number of rows and columns. Aims to behave like a {@link JList} from the
@@ -101,6 +103,7 @@ public class JGridList extends JPanel {
         setLayout(new BorderLayout());
         cellsContainer = new JPanel();
         this.add(cellsContainer, BorderLayout.CENTER);
+        cellsContainer.setTransferHandler(cellsContainerTransferHandler);
         setTransferHandler(new DefaultTransferHandler(this));
         setShowScrollbar(true);
         reInitEmptyUI();
@@ -758,11 +761,7 @@ public class JGridList extends JPanel {
         
     }
     
-    public static class DefaultTransferHandler extends TransferHandler {
-        protected JGridList list;
-        public DefaultTransferHandler(JGridList list) {
-            this.list = list;
-        }
+    protected TransferHandler cellsContainerTransferHandler = new TransferHandler() {
         @Override
         public int getSourceActions(JComponent c) {
             return COPY|MOVE;
@@ -771,7 +770,7 @@ public class JGridList extends JPanel {
         protected Transferable createTransferable(JComponent c) {
             StringBuffer txt = new StringBuffer(30);
             boolean start = true;
-            for (Object elt : list.getSelectedValues()) {
+            for (Object elt : getSelectedValues()) {
                 if (!start) {
                     txt.append("\n");
                 }
@@ -779,6 +778,13 @@ public class JGridList extends JPanel {
                 start = false;
             }
             return new StringSelection(txt.toString());
+        }
+    };
+
+    public static class DefaultTransferHandler extends TransferHandler {
+        protected JGridList list;
+        public DefaultTransferHandler(JGridList list) {
+            this.list = list;
         }
     }
 
@@ -818,13 +824,12 @@ public class JGridList extends JPanel {
         case MouseEvent.MOUSE_DRAGGED:
             if (lastPressed != null) {
                 if (e.getPoint().distance(lastPressed) > 5) {
-                    TransferHandler th = getTransferHandler();
-                    if (th != null) {
-                        //int action = (0 != (e.getModifiers() & MouseEvent.CTRL_MASK) ? TransferHandler.COPY : TransferHandler.MOVE);
-                        int action = TransferHandler.COPY;
-                        System.out.println("DRAG");
-                        th.exportAsDrag(this, e, action);
-                    }
+                    //int action = (0 != (e.getModifiers() & MouseEvent.CTRL_MASK) ? TransferHandler.COPY : TransferHandler.MOVE);
+                    int action = TransferHandler.COPY;
+                    System.out.println("DRAG");
+                    MouseEvent cce = Misc.deepCopy(e);
+                    cce.setSource(cellsContainer);
+                    cellsContainerTransferHandler.exportAsDrag(cellsContainer, cce, action);
                     lastPressed = null;
                 }
             }
