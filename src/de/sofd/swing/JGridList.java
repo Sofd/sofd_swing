@@ -323,6 +323,13 @@ public class JGridList extends JPanel {
         }
     }
     
+    public void repaintCell(int modelIndex) {
+        JComponent c = getComponentFor(modelIndex);
+        if (c != null) {
+            c.repaint();
+        }
+    }
+    
     public ListModel getModel() {
         return model;
     }
@@ -714,6 +721,48 @@ public class JGridList extends JPanel {
     
     //// Drag&Drop support
     
+    private DropLocation renderedDropLocation;
+    
+    public void setRenderedDropLocation(DropLocation renderedDropLocation) {
+        DropLocation old = this.renderedDropLocation;
+        this.renderedDropLocation = renderedDropLocation;
+        if (old != null) {
+            repaintCell(old.index);
+        }
+        if (renderedDropLocation != null) {
+            repaintCell(renderedDropLocation.index);
+        }
+    }
+    
+    public DropLocation getRenderedDropLocation() {
+        return renderedDropLocation;
+    }
+
+    private static final double DROPLOC_INSERT_RELATIVE_X = 0.2;
+    
+    public DropLocation getDropLocationFor(Point p) {
+        if (getModel() == null) {
+            return null;
+        }
+        p = SwingUtilities.convertPoint(this, p, cellsContainer);
+        int boxWidth = cellsContainer.getWidth() / nCols;
+        int boxHeight = cellsContainer.getHeight() / nRows;
+        int col = Math.min(nCols-1, p.x / boxWidth);
+        int row = Math.min(nRows-1, p.y / boxHeight);
+        int idx = getFirstDisplayedIdx() + row * nCols + col;
+        if (idx >= getModel().getSize()) {
+            return new DropLocation(getModel().getSize(), true, p);
+        }
+        double boxRelativeX = (p.x - col*boxWidth) / boxWidth;
+        if (boxRelativeX < DROPLOC_INSERT_RELATIVE_X) {
+            return new DropLocation(idx, true, p);
+        } else if (boxRelativeX > 1 - DROPLOC_INSERT_RELATIVE_X) {
+            return new DropLocation(idx + 1, true, p);
+        } else {
+            return new DropLocation(idx, false, p);
+        }
+    }
+    
     public void setDragEnabled(boolean b) {
         dragEnabled = b;
     }
@@ -748,8 +797,10 @@ public class JGridList extends JPanel {
         private int index;
         private boolean isInsert;
         
-        public DropLocation(Point p) {
+        public DropLocation(int index, boolean isInsert, Point p) {
             super(p);
+            this.index = index;
+            this.isInsert = isInsert;
         }
         
         public int getIndex() {
