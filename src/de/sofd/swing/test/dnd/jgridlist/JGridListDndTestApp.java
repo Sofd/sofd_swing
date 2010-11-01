@@ -1,15 +1,17 @@
 package de.sofd.swing.test.dnd.jgridlist;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.IOException;
 
 import javax.swing.AbstractAction;
 import javax.swing.DefaultListModel;
+import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -17,23 +19,21 @@ import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
+import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
-import javax.swing.TransferHandler.TransferSupport;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import de.sofd.swing.DefaultGridListComponentFactory;
 import de.sofd.swing.GridListComponentFactory;
 import de.sofd.swing.JGridList;
-import java.awt.event.ActionListener;
-import javax.swing.JCheckBox;
-import javax.swing.SwingUtilities;
 
 
 public class JGridListDndTestApp {
-
+    
     private class ListFrame extends JFrame {
         private JGridList gridList;
         private DefaultListModel listModel;
@@ -85,9 +85,20 @@ public class JGridListDndTestApp {
             initToolBar();
         }
         
+
+        private DataFlavor gridListCellFlavor = new DataFlavor(DataFlavor.javaJVMLocalObjectMimeType +
+                "; class=" + GridListCellContents.class.getCanonicalName(),
+                "JGridList cell contents");
+        
         private class ListTH extends TransferHandler {
+            //TODO: setRenderedDropLocation(null) also necessary when the drag leaves the component...
+            // (may require using something other than canImport() for this)
+            
             @Override
             public boolean canImport(TransferSupport ts) {
+                if (!ts.isDataFlavorSupported(gridListCellFlavor)) {
+                    return false;
+                }
                 JGridList list = (JGridList) ts.getComponent();
                 JGridList.DropLocation dl = list.getDropLocationFor(ts.getDropLocation().getDropPoint());
                 list.setRenderedDropLocation(dl);
@@ -100,11 +111,36 @@ public class JGridListDndTestApp {
                     return false;
                 }
                 JGridList list = (JGridList) ts.getComponent();
-                JGridList.DropLocation dl = list.getDropLocationFor(ts.getDropLocation().getDropPoint());
-                list.setRenderedDropLocation(null);
-                Transferable t = ts.getTransferable();
-                System.out.println("importing transferable: " + t);
-                return true;
+                DefaultListModel model = (DefaultListModel)list.getModel();
+                try {
+                    JGridList.DropLocation dl = list.getDropLocationFor(ts.getDropLocation().getDropPoint());
+                    list.setRenderedDropLocation(null);
+                    Transferable t = ts.getTransferable();
+                    GridListCellContents cellContents = (GridListCellContents) t.getTransferData(gridListCellFlavor);
+                    System.out.println("importing: " + cellContents);
+                    String[] strings = cellContents.getStrings();
+                    boolean first = true;
+                    for (int i = strings.length - 1; i >= 0; i--) {
+                        String s = strings[i];
+                        if (first) {
+                            if (dl.isInsert()) {
+                                model.insertElementAt(s, dl.getIndex());
+                            } else {
+                                model.setElementAt(s, dl.getIndex());
+                            }
+                            first = false;
+                        } else {
+                            model.insertElementAt(s, dl.getIndex());
+                        }
+                    }
+                    return true;
+                } catch (UnsupportedFlavorException e) {
+                    e.printStackTrace();
+                    return false;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return false;
+                }
             }
 
             @Override
@@ -115,33 +151,37 @@ public class JGridListDndTestApp {
             @Override
             protected Transferable createTransferable(JComponent c) {
                 JGridList list = (JGridList) c;
-                StringBuffer txt = new StringBuffer(30);
+                final StringBuffer txt = new StringBuffer(30);
                 boolean start = true;
-                for (Object elt : list.getSelectedValues()) {
+                final Object[] values = list.getSelectedValues();
+                for (Object elt : values) {
                     if (!start) {
                         txt.append("\n");
                     }
                     txt.append(elt.toString());
                     start = false;
                 }
-                return new StringSelection(txt.toString());
-                /*
                 return new Transferable() {
                     @Override
                     public boolean isDataFlavorSupported(DataFlavor flavor) {
-                        return flavor.equals(DataFlavor.stringFlavor);
+                        return flavor.equals(DataFlavor.stringFlavor) || flavor.equals(gridListCellFlavor);
                     }
                     @Override
                     public DataFlavor[] getTransferDataFlavors() {
-                        return new DataFlavor[]{DataFlavor.stringFlavor};
+                        return new DataFlavor[]{gridListCellFlavor, DataFlavor.stringFlavor};
                     }
                     @Override
                     public Object getTransferData(DataFlavor flavor)
                             throws UnsupportedFlavorException, IOException {
-                        return "hello world!";
+                        if (flavor.equals(gridListCellFlavor)) {
+                            return new GridListCellContents(values);
+                        } else if (flavor.equals(DataFlavor.stringFlavor)) {
+                            return txt.toString();
+                        } else {
+                            throw new UnsupportedFlavorException(flavor);
+                        }
                     }
                 };
-                */
             }
         }
 
