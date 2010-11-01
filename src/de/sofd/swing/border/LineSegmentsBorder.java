@@ -37,24 +37,21 @@ public class LineSegmentsBorder extends LineBorder {
             Color oldColor = g.getColor();
             g.setColor(segmentColor);
             for(int i = 0; i < getThickness(); i++)  {
-                if (segmentLocation == SegmentLocation.ALL) {
+                switch (segmentLocation) {
+                case NORTH:
+                    g.drawLine(x, y+i, x+width, y+i);
+                    break;
+                case SOUTH:
+                    g.drawLine(x, y+height-i, x+width, y+height-i);
+                    break;
+                case WEST:
+                    g.drawLine(x+i, y, x+i, y+height);
+                    break;
+                case EAST:
+                    g.drawLine(x+width-i, y, x+width-i, y+height);
+                    break;
+                case ALL:
                     g.drawRect(x+i, y+i, width-i-i-1, height-i-i-1);
-                } else {
-                    switch (segmentLocation) {
-                    case NORTH:
-                        g.drawLine(x, y+i, x+width, y+i);
-                        break;
-                    case SOUTH:
-                        g.drawLine(x, y+height-i, x+width, y+height-i);
-                        break;
-                    case WEST:
-                        g.drawLine(x+i, y, x+i, y+height);
-                        break;
-                    case EAST:
-                        g.drawLine(x+width-i, y, x+width-i, y+height);
-                        break;
-                    }
-                    
                 }
             }
             g.setColor(oldColor);
