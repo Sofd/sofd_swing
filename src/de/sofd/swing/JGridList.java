@@ -39,8 +39,6 @@ import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
-import de.sofd.util.Misc;
-
 /**
  * Component that displays a list of items in a rectangular grid with a fixed
  * number of rows and columns. Aims to behave like a {@link JList} from the
@@ -104,7 +102,6 @@ public class JGridList extends JPanel {
         setLayout(new BorderLayout());
         cellsContainer = new JPanel();
         this.add(cellsContainer, BorderLayout.CENTER);
-        cellsContainer.setTransferHandler(cellsContainerTransferHandler);
         setTransferHandler(new DefaultTransferHandler(this));
         setShowScrollbar(true);
         reInitEmptyUI();
@@ -720,6 +717,10 @@ public class JGridList extends JPanel {
     }
     
     //// Drag&Drop support
+    // Swing doesn't let us provide DnD support for JGridList that's API-compatible to that
+    // of Swing's own components like JList: http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6448332
+    // So we just provide drag support for now, and public APIs to let users more easily
+    // implement drop support in their own TransferHandlers
     
     private DropLocation renderedDropLocation;
     
@@ -732,6 +733,7 @@ public class JGridList extends JPanel {
         if (renderedDropLocation != null) {
             repaintCell(renderedDropLocation.index);
         }
+        System.out.println("renderedDropLocation: " + renderedDropLocation);
     }
     
     public DropLocation getRenderedDropLocation() {
@@ -753,7 +755,7 @@ public class JGridList extends JPanel {
         if (idx >= getModel().getSize()) {
             return new DropLocation(getModel().getSize(), true, p);
         }
-        double boxRelativeX = (p.x - col*boxWidth) / boxWidth;
+        double boxRelativeX = ((double)p.x - col*boxWidth) / boxWidth;
         if (boxRelativeX < DROPLOC_INSERT_RELATIVE_X) {
             return new DropLocation(idx, true, p);
         } else if (boxRelativeX > 1 - DROPLOC_INSERT_RELATIVE_X) {
@@ -811,36 +813,12 @@ public class JGridList extends JPanel {
             return isInsert;
         }
         
+        @Override
+        public String toString() {
+            return "(" + getIndex() + "," + isInsert() + ")";
+        }
+        
     }
-
-    /**
-     * Internal transfer handler for the cellsContainer. The idea is to initiate
-     * low-level stuff like drop location rendering from here and delegate
-     * high-level stuff to the JGridList's TransferHandler. This will hopefully
-     * lead to a situation where users of the JGridList can replace the
-     * JGridList's TransferHandler without making the low-level stuff stop
-     * working (so JGridList's DnD behavior more closely resembles JList's). The
-     * information hiding probably isn't perfect -- ideally, we wouldn't use
-     * TransferHandlers internally at all, resorting to the low-level DnD API
-     * instead
-     * (http://download.oracle.com/javase/1.5.0/docs/guide/dragndrop/spec/dnd1.html).
-     * This was deemed too complicated for now, though.
-     */
-    protected TransferHandler cellsContainerTransferHandler = new TransferHandler() {
-        @Override
-        public int getSourceActions(JComponent c) {
-            return COPY|MOVE;
-        }
-        @Override
-        protected Transferable createTransferable(JComponent c) {
-            TransferHandler listTH = JGridList.this.getTransferHandler();
-            if (listTH != null) {
-                return (Transferable) Misc.callMethod(listTH, "createTransferable", c);
-            } else {
-                return null;
-            }
-        }
-    };
 
     public static class DefaultTransferHandler extends TransferHandler {
         protected JGridList list;
@@ -900,13 +878,16 @@ public class JGridList extends JPanel {
         if (!isDragEnabled()) {
             return;
         }
+        if (getTransferHandler() == null) {
+            return;
+        }
         switch (e.getID()) {
         case MouseEvent.MOUSE_DRAGGED:
             if (lastPressed != null) {
                 if (e.getPoint().distance(lastPressed) > 5) {
                     //int action = (0 != (e.getModifiers() & MouseEvent.CTRL_MASK) ? TransferHandler.COPY : TransferHandler.MOVE);
                     int action = TransferHandler.COPY;
-                    cellsContainerTransferHandler.exportAsDrag(cellsContainer, SwingUtilities.convertMouseEvent(cellsContainer, e, this), action);
+                    getTransferHandler().exportAsDrag(this, SwingUtilities.convertMouseEvent(cellsContainer, e, this), action);
                     lastPressed = null;
                 }
             }
@@ -918,8 +899,7 @@ public class JGridList extends JPanel {
     }
 
 
-    //TODO: provide code to create DropLocations for points, to be used by drop handlers in subclasses/user code
-    //      How to account for the getDropMode()? Consult JList for inspiration
+    //TODO: How to account for the getDropMode()? Consult JList for inspiration
 
     //// default UI interactions
 

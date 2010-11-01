@@ -1,7 +1,11 @@
 package de.sofd.swing.test.dnd.jgridlist;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 
 import javax.swing.AbstractAction;
@@ -15,6 +19,8 @@ import javax.swing.JTextField;
 import javax.swing.JToolBar;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.TransferHandler;
+import javax.swing.TransferHandler.TransferSupport;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -53,6 +59,7 @@ public class JGridListDndTestApp {
             gridList = new JGridList(new DefaultListModel(), nonComponentReusingComponentFactory);
             gridList.setModel(listModel);
             gridList.setDragEnabled(true);
+            gridList.setTransferHandler(new ListTH());
             
             getContentPane().add(gridList, BorderLayout.CENTER);
             // TODO: DefaultGridListComponentFactory selection visualization doesn't work
@@ -76,6 +83,66 @@ public class JGridListDndTestApp {
             gridList.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
             
             initToolBar();
+        }
+        
+        private class ListTH extends TransferHandler {
+            @Override
+            public boolean canImport(TransferSupport ts) {
+                JGridList list = (JGridList) ts.getComponent();
+                JGridList.DropLocation dl = list.getDropLocationFor(ts.getDropLocation().getDropPoint());
+                list.setRenderedDropLocation(dl);
+                return (dl != null);
+            }
+
+            @Override
+            public boolean importData(TransferSupport ts) {
+                if (!canImport(ts)) {
+                    return false;
+                }
+                JGridList list = (JGridList) ts.getComponent();
+                JGridList.DropLocation dl = list.getDropLocationFor(ts.getDropLocation().getDropPoint());
+                list.setRenderedDropLocation(null);
+                Transferable t = ts.getTransferable();
+                System.out.println("importing transferable: " + t);
+                return true;
+            }
+
+            @Override
+            public int getSourceActions(JComponent c) {
+                return COPY|MOVE;
+            }
+            
+            @Override
+            protected Transferable createTransferable(JComponent c) {
+                JGridList list = (JGridList) c;
+                StringBuffer txt = new StringBuffer(30);
+                boolean start = true;
+                for (Object elt : list.getSelectedValues()) {
+                    if (!start) {
+                        txt.append("\n");
+                    }
+                    txt.append(elt.toString());
+                    start = false;
+                }
+                return new StringSelection(txt.toString());
+                /*
+                return new Transferable() {
+                    @Override
+                    public boolean isDataFlavorSupported(DataFlavor flavor) {
+                        return flavor.equals(DataFlavor.stringFlavor);
+                    }
+                    @Override
+                    public DataFlavor[] getTransferDataFlavors() {
+                        return new DataFlavor[]{DataFlavor.stringFlavor};
+                    }
+                    @Override
+                    public Object getTransferData(DataFlavor flavor)
+                            throws UnsupportedFlavorException, IOException {
+                        return "hello world!";
+                    }
+                };
+                */
+            }
         }
 
         private void initToolBar() {
