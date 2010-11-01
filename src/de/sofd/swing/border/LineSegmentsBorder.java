@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics;
 
+import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 
 /**
@@ -20,7 +21,19 @@ public class LineSegmentsBorder extends LineBorder {
     private final SegmentLocation segmentLocation;
     private final Color segmentColor;
     private final boolean isBaseBorderVisible;
-    
+
+    /**
+     * color is the base line color. If null, no base line will be drawn. The
+     * other parameters should be self-descriptive. segmentColor==null ||
+     * segmentLocation==NONE results in no segment being drawn. (so color==null
+     * && segmentColor==null makes this border equivalent to {@link EmptyBorder}
+     * ).
+     * 
+     * @param color
+     * @param thickness
+     * @param segmentColor
+     * @param segmentLocation
+     */
     public LineSegmentsBorder(Color color, int thickness, Color segmentColor, SegmentLocation segmentLocation) {
         super(color != null ? color : Color.black, thickness, false);
         isBaseBorderVisible = (color != null);
