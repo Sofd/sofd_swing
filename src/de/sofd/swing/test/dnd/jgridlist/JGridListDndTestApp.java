@@ -5,9 +5,14 @@ import java.awt.Dimension;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.dnd.DropTargetDragEvent;
+import java.awt.dnd.DropTargetDropEvent;
+import java.awt.dnd.DropTargetEvent;
+import java.awt.dnd.DropTargetListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
+import java.util.TooManyListenersException;
 
 import javax.swing.AbstractAction;
 import javax.swing.DefaultListModel;
@@ -19,7 +24,6 @@ import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
-import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
@@ -59,7 +63,13 @@ public class JGridListDndTestApp {
             gridList = new JGridList(new DefaultListModel(), nonComponentReusingComponentFactory);
             gridList.setModel(listModel);
             gridList.setDragEnabled(true);
-            gridList.setTransferHandler(new ListTH());
+            ListTH th = new ListTH();
+            gridList.setTransferHandler(th);
+            try {
+                gridList.getDropTarget().addDropTargetListener(th);
+            } catch (TooManyListenersException e) {
+                throw new RuntimeException("SHOULD NEVER HAPPEN", e);
+            }
             
             getContentPane().add(gridList, BorderLayout.CENTER);
             // TODO: DefaultGridListComponentFactory selection visualization doesn't work
@@ -90,23 +100,28 @@ public class JGridListDndTestApp {
                 "; class=" + GridListCellContents.class.getCanonicalName(),
                 "JGridList cell contents");
         
-        private class ListTH extends TransferHandler {
+        private class ListTH extends TransferHandler implements DropTargetListener {
             //TODO: setRenderedDropLocation(null) also necessary when the drag leaves the component...
             // (may require using something other than canImport() for this)
             
             private int[] draggedIndices;
             private int addIndex = -1;
             private int addCount = 0;
+            
+            private boolean couldImport;
+            private JGridList.DropLocation lastDropLocation;
 
             @Override
             public boolean canImport(TransferSupport ts) {
                 if (!ts.isDataFlavorSupported(gridListCellFlavor)) {
-                    return false;
+                    couldImport = false;
+                } else {
+                    JGridList list = (JGridList) ts.getComponent();
+                    //remember the dropLocation and the method result for the following call of dragOver().
+                    lastDropLocation = list.getDropLocationFor(ts.getDropLocation().getDropPoint());
+                    couldImport = (lastDropLocation != null);
                 }
-                JGridList list = (JGridList) ts.getComponent();
-                JGridList.DropLocation dl = list.getDropLocationFor(ts.getDropLocation().getDropPoint());
-                list.setRenderedDropLocation(dl);
-                return (dl != null);
+                return couldImport;
             }
 
             @Override
@@ -214,6 +229,33 @@ public class JGridListDndTestApp {
                 addCount = 0;
                 addIndex = -1;
                 list.setRenderedDropLocation(null);
+            }
+
+
+            //DropTargetListener methods. Called by the list's DropTarget immediately
+            //AFTER the corresponding TransferHandler methods. E.g. dragOver() is
+            //called after a corresponding call of canImport().
+            
+            @Override
+            public void dropActionChanged(DropTargetDragEvent dtde) {
+            }
+            @Override
+            public void drop(DropTargetDropEvent dtde) {
+                JGridList list = (JGridList) dtde.getDropTargetContext().getComponent();
+                list.setRenderedDropLocation(null);
+            }
+            @Override
+            public void dragOver(DropTargetDragEvent dtde) {
+                JGridList list = (JGridList) dtde.getDropTargetContext().getComponent();
+                list.setRenderedDropLocation(couldImport ? lastDropLocation : null);
+            }
+            @Override
+            public void dragExit(DropTargetEvent dte) {
+                JGridList list = (JGridList) dte.getDropTargetContext().getComponent();
+                list.setRenderedDropLocation(null);
+            }
+            @Override
+            public void dragEnter(DropTargetDragEvent dtde) {
             }
         }
 
