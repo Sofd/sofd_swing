@@ -101,8 +101,6 @@ public class JGridListDndTestApp {
                 "JGridList cell contents");
         
         private class ListTH extends TransferHandler implements DropTargetListener {
-            //TODO: setRenderedDropLocation(null) also necessary when the drag leaves the component...
-            // (may require using something other than canImport() for this)
             
             private int[] draggedIndices;
             private int addIndex = -1;
