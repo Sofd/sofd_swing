@@ -39,6 +39,8 @@ import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
+import de.sofd.swing.GridListComponentFactory.DropLocationMarker;
+
 /**
  * Component that displays a list of items in a rectangular grid with a fixed
  * number of rows and columns. Aims to behave like a {@link JList} from the
@@ -74,6 +76,8 @@ public class JGridList extends JPanel {
     
     private boolean dragEnabled = false;
     private DropMode dropMode = DropMode.ON_OR_INSERT;
+    
+    private DropLocation renderedDropLocation;
     
     // invariants (conditions that hold whenever the outside code
     // can interact with this component):
@@ -223,11 +227,12 @@ public class JGridList extends JPanel {
             Object modelItem = model.getElementAt(modelIndex);
             JComponent comp = componentFactory.createComponent(this, container, modelItem);
             comp.setVisible(true);
-            componentFactory.setSelectedStatus
+            componentFactory.setSelectedStatusAndDropLocationMarker
                     (this,
                      container,
                      modelItem,
                      selectionModel != null && selectionModel.isSelectedIndex(modelIndex),
+                     getDropLocationMarkerForIndex(modelIndex),
                      comp);
         }
         cellsContainer.add(container, childIndex);
@@ -258,11 +263,12 @@ public class JGridList extends JPanel {
                     Object modelItem = model.getElementAt(modelIndex);
                     JComponent comp = componentFactory.createComponent(this, container, modelItem);
                     comp.setVisible(true);
-                    componentFactory.setSelectedStatus
+                    componentFactory.setSelectedStatusAndDropLocationMarker
                             (this,
                              container,
                              modelItem,
                              selectionModel != null && selectionModel.isSelectedIndex(modelIndex),
+                             getDropLocationMarkerForIndex(modelIndex),
                              comp);
                 }
             }
@@ -327,6 +333,22 @@ public class JGridList extends JPanel {
         }
     }
     
+    protected void repaintCellSelectionAndDropLocationMarker(int modelIndex) {
+        JComponent comp = getComponentFor(modelIndex);
+        if (comp == null) {
+            return;
+        }
+        JPanel container = (JPanel) comp.getParent();
+        Object modelItem = model.getElementAt(modelIndex);
+        componentFactory.setSelectedStatusAndDropLocationMarker
+            (JGridList.this,
+             container,
+             modelItem,
+             selectionModel != null && selectionModel.isSelectedIndex(modelIndex),
+             getDropLocationMarkerForIndex(modelIndex),
+             comp);
+    }
+
     public ListModel getModel() {
         return model;
     }
@@ -566,11 +588,12 @@ public class JGridList extends JPanel {
                         Object modelItem = model.getElementAt(modelIdx);
                         JPanel container = (JPanel) cellsContainer.getComponent(childIdx);
                         JComponent comp = (JComponent) container.getComponent(0);
-                        componentFactory.setSelectedStatus
+                        componentFactory.setSelectedStatusAndDropLocationMarker
                             (JGridList.this,
                              container,
                              modelItem,
                              selectionModel != null && selectionModel.isSelectedIndex(modelIdx),
+                             getDropLocationMarkerForIndex(modelIdx),
                              comp);
                     }
                 }
@@ -722,24 +745,57 @@ public class JGridList extends JPanel {
     // So we just provide drag support for now, and public APIs to let users more easily
     // implement drop support in their own TransferHandlers
     
-    private DropLocation renderedDropLocation;
-    
     public void setRenderedDropLocation(DropLocation renderedDropLocation) {
         DropLocation old = this.renderedDropLocation;
         this.renderedDropLocation = renderedDropLocation;
         if (old != null) {
             repaintCell(old.index);
+            repaintCellSelectionAndDropLocationMarker(old.index - 1);
+            repaintCellSelectionAndDropLocationMarker(old.index);
+            repaintCellSelectionAndDropLocationMarker(old.index + 1);
         }
         if (renderedDropLocation != null) {
             repaintCell(renderedDropLocation.index);
+            repaintCellSelectionAndDropLocationMarker(renderedDropLocation.index - 1);
+            repaintCellSelectionAndDropLocationMarker(renderedDropLocation.index);
+            repaintCellSelectionAndDropLocationMarker(renderedDropLocation.index + 1);
         }
-        System.out.println("renderedDropLocation: " + renderedDropLocation);
+        //System.out.println("renderedDropLocation: " + renderedDropLocation);
     }
     
     public DropLocation getRenderedDropLocation() {
         return renderedDropLocation;
     }
+    
+    //TODO: update renderedDropLocation on element removals etc.?
 
+    /**
+     * Get the current {@link DropLocationMarker} value for the model element at
+     * index <i>index</i>, as imposed by the {@link #getRenderedDropLocation()}.
+     * 
+     * @param index
+     * @return
+     */
+    protected DropLocationMarker getDropLocationMarkerForIndex(int index) {
+        DropLocation dl = getRenderedDropLocation();
+        if (dl == null) {
+            return DropLocationMarker.NONE;
+        }
+        if (! dl.isInsert()) {
+            return (index == dl.getIndex() ? DropLocationMarker.ON : DropLocationMarker.NONE);
+        } else {
+            int diff = dl.getIndex() - index;
+            switch (diff) {
+            case 0:
+                return DropLocationMarker.BEFORE;
+            case 1:
+                return DropLocationMarker.AFTER;
+            default:
+                return DropLocationMarker.NONE;
+            }
+        }
+    }
+    
     private static final double DROPLOC_INSERT_RELATIVE_X = 0.2;
     
     public DropLocation getDropLocationFor(Point p) {
