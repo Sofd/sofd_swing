@@ -94,6 +94,10 @@ public class JGridListDndTestApp {
             //TODO: setRenderedDropLocation(null) also necessary when the drag leaves the component...
             // (may require using something other than canImport() for this)
             
+            private int[] draggedIndices;
+            private int addIndex = -1;
+            private int addCount = 0;
+
             @Override
             public boolean canImport(TransferSupport ts) {
                 if (!ts.isDataFlavorSupported(gridListCellFlavor)) {
@@ -132,6 +136,11 @@ public class JGridListDndTestApp {
                         } else {
                             model.insertElementAt(s, dl.getIndex());
                         }
+                        addIndex = dl.getIndex();
+                        addCount = strings.length;
+                        if (!dl.isInsert()) {
+                            addCount -= 1;
+                        }
                     }
                     return true;
                 } catch (UnsupportedFlavorException e) {
@@ -153,6 +162,7 @@ public class JGridListDndTestApp {
                 JGridList list = (JGridList) c;
                 final StringBuffer txt = new StringBuffer(30);
                 boolean start = true;
+                draggedIndices = list.getSelectedIndices();
                 final Object[] values = list.getSelectedValues();
                 for (Object elt : values) {
                     if (!start) {
@@ -182,6 +192,28 @@ public class JGridListDndTestApp {
                         }
                     }
                 };
+            }
+            
+            @Override
+            protected void exportDone(JComponent source, Transferable data, int action) {
+                JGridList list = (JGridList) source;
+                DefaultListModel model = (DefaultListModel)list.getModel();
+                if (action == TransferHandler.MOVE) {
+                    if (draggedIndices != null) {
+                        for (int i = 0; i < draggedIndices.length; i++) {
+                            if (draggedIndices[i] >= addIndex) {
+                                draggedIndices[i] += addCount;
+                            }
+                        }
+                        for (int i = draggedIndices.length - 1; i >= 0; i--) {
+                            model.remove(draggedIndices[i]);
+                        }
+                    }
+                }
+                draggedIndices = null;
+                addCount = 0;
+                addIndex = -1;
+                list.setRenderedDropLocation(null);
             }
         }
 

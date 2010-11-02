@@ -575,6 +575,22 @@ public class JGridList extends JPanel {
         return result;
     }
     
+    public int[] getSelectedIndices() {
+        ListSelectionModel sm = getSelectionModel();
+        int minSI = sm.getMinSelectionIndex();
+        int maxSI = sm.getMaxSelectionIndex();
+        int[] tmp = new int[1 + (maxSI - minSI)];
+        int n = 0;
+        for (int i = minSI; i <= maxSI; i++) {
+            if (sm.isSelectedIndex(i)) {
+                tmp[n++] = i;
+            }
+        }
+        int[] result = new int[n];
+        System.arraycopy(tmp, 0, result, 0, n);
+        return result;
+    }
+
     private ListSelectionListener listSelectionListener = new ListSelectionListener() {
 
         @Override
@@ -941,8 +957,8 @@ public class JGridList extends JPanel {
         case MouseEvent.MOUSE_DRAGGED:
             if (lastPressed != null) {
                 if (e.getPoint().distance(lastPressed) > 5) {
-                    //int action = (0 != (e.getModifiers() & MouseEvent.CTRL_MASK) ? TransferHandler.COPY : TransferHandler.MOVE);
-                    int action = TransferHandler.COPY;
+                    int action = (0 != (e.getModifiers() & MouseEvent.CTRL_MASK) ? TransferHandler.COPY : TransferHandler.MOVE);
+                    //int action = TransferHandler.COPY;
                     getTransferHandler().exportAsDrag(this, SwingUtilities.convertMouseEvent(cellsContainer, e, this), action);
                     lastPressed = null;
                 }
