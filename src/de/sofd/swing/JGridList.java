@@ -758,8 +758,11 @@ public class JGridList extends JPanel {
     //// Drag&Drop support
     // Swing doesn't let us provide DnD support for JGridList that's API-compatible to that
     // of Swing's own components like JList: http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6448332
-    // So we just provide drag support for now, and public APIs to let users more easily
-    // implement drop support in their own TransferHandlers
+    // So we just provide drag support for now, and public APIs like setRenderedDropLocation()
+    // to let users more easily implement drop support in their own, external TransferHandlers
+    //
+    // Normally, the renderedDropLocation should be something that's managed internally by the list's
+    // DnD handling, so the getters and setters should not be public.
     
     public void setRenderedDropLocation(DropLocation renderedDropLocation) {
         DropLocation old = this.renderedDropLocation;
