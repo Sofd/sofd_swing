@@ -90,7 +90,7 @@ public class JGridListDndTestApp {
             
             gridList.getSelectionModel().setSelectionInterval(7, 7);
             gridList.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-            gridList.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+            //gridList.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
             
             initToolBar();
         }
@@ -167,11 +167,13 @@ public class JGridListDndTestApp {
 
             @Override
             public int getSourceActions(JComponent c) {
+                System.out.println("getSourceActions");
                 return COPY|MOVE;
             }
             
             @Override
             protected Transferable createTransferable(JComponent c) {
+                System.out.println("createTransferable");
                 JGridList list = (JGridList) c;
                 final StringBuffer txt = new StringBuffer(30);
                 boolean start = true;
@@ -209,6 +211,7 @@ public class JGridListDndTestApp {
             
             @Override
             protected void exportDone(JComponent source, Transferable data, int action) {
+                System.out.println("exportDone");
                 JGridList list = (JGridList) source;
                 DefaultListModel model = (DefaultListModel)list.getModel();
                 if (action == TransferHandler.MOVE) {
@@ -221,6 +224,8 @@ public class JGridListDndTestApp {
                         for (int i = draggedIndices.length - 1; i >= 0; i--) {
                             model.remove(draggedIndices[i]);
                         }
+                    } else {
+                        System.out.println("draggedIndices==null??");
                     }
                 }
                 draggedIndices = null;
