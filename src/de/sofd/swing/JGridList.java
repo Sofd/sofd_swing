@@ -1,11 +1,14 @@
 package de.sofd.swing;
 
+import java.awt.AWTEvent;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.GridLayout;
 import java.awt.Point;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -17,6 +20,7 @@ import javax.swing.Action;
 import javax.swing.ActionMap;
 import javax.swing.BoundedRangeModel;
 import javax.swing.DefaultListSelectionModel;
+import javax.swing.DropMode;
 import javax.swing.InputMap;
 import javax.swing.JComponent;
 import javax.swing.JList;
@@ -26,12 +30,16 @@ import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
+import javax.swing.TransferHandler;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+
+import de.sofd.swing.GridListComponentFactory.DropLocationMarker;
 
 /**
  * Component that displays a list of items in a rectangular grid with a fixed
@@ -66,6 +74,11 @@ public class JGridList extends JPanel {
 
     private boolean followSelection = true;
     
+    private boolean dragEnabled = false;
+    private DropMode dropMode = DropMode.ON_OR_INSERT;
+    
+    private DropLocation renderedDropLocation;
+    
     // invariants (conditions that hold whenever the outside code
     // can interact with this component):
     //
@@ -93,9 +106,11 @@ public class JGridList extends JPanel {
         setLayout(new BorderLayout());
         cellsContainer = new JPanel();
         this.add(cellsContainer, BorderLayout.CENTER);
+        setTransferHandler(new DefaultTransferHandler(this));
         setShowScrollbar(true);
         reInitEmptyUI();
         copyUiStateToSubComponents();
+        enableEvents(AWTEvent.MOUSE_EVENT_MASK|AWTEvent.MOUSE_MOTION_EVENT_MASK);
         setupUiInteractions();
         setSelectionModel(createSelectionModel());
         setComponentFactory(new DefaultGridListComponentFactory());
@@ -212,11 +227,12 @@ public class JGridList extends JPanel {
             Object modelItem = model.getElementAt(modelIndex);
             JComponent comp = componentFactory.createComponent(this, container, modelItem);
             comp.setVisible(true);
-            componentFactory.setSelectedStatus
+            componentFactory.setSelectedStatusAndDropLocationMarker
                     (this,
                      container,
                      modelItem,
                      selectionModel != null && selectionModel.isSelectedIndex(modelIndex),
+                     getDropLocationMarkerForIndex(modelIndex),
                      comp);
         }
         cellsContainer.add(container, childIndex);
@@ -247,11 +263,12 @@ public class JGridList extends JPanel {
                     Object modelItem = model.getElementAt(modelIndex);
                     JComponent comp = componentFactory.createComponent(this, container, modelItem);
                     comp.setVisible(true);
-                    componentFactory.setSelectedStatus
+                    componentFactory.setSelectedStatusAndDropLocationMarker
                             (this,
                              container,
                              modelItem,
                              selectionModel != null && selectionModel.isSelectedIndex(modelIndex),
+                             getDropLocationMarkerForIndex(modelIndex),
                              comp);
                 }
             }
@@ -309,6 +326,29 @@ public class JGridList extends JPanel {
         }
     }
     
+    public void repaintCell(int modelIndex) {
+        JComponent c = getComponentFor(modelIndex);
+        if (c != null) {
+            c.repaint();
+        }
+    }
+    
+    protected void repaintCellSelectionAndDropLocationMarker(int modelIndex) {
+        JComponent comp = getComponentFor(modelIndex);
+        if (comp == null) {
+            return;
+        }
+        JPanel container = (JPanel) comp.getParent();
+        Object modelItem = model.getElementAt(modelIndex);
+        componentFactory.setSelectedStatusAndDropLocationMarker
+            (JGridList.this,
+             container,
+             modelItem,
+             selectionModel != null && selectionModel.isSelectedIndex(modelIndex),
+             getDropLocationMarkerForIndex(modelIndex),
+             comp);
+    }
+
     public ListModel getModel() {
         return model;
     }
@@ -519,6 +559,38 @@ public class JGridList extends JPanel {
         reInitEmptyUI();
     }
 
+    public Object[] getSelectedValues() {
+        ListSelectionModel sm = getSelectionModel();
+        int minSI = sm.getMinSelectionIndex();
+        int maxSI = sm.getMaxSelectionIndex();
+        Object[] tmp = new Object[1 + (maxSI - minSI)];
+        int n = 0;
+        for (int i = minSI; i <= maxSI; i++) {
+            if (sm.isSelectedIndex(i)) {
+                tmp[n++] = getModel().getElementAt(i);
+            }
+        }
+        Object[] result = new Object[n];
+        System.arraycopy(tmp, 0, result, 0, n);
+        return result;
+    }
+    
+    public int[] getSelectedIndices() {
+        ListSelectionModel sm = getSelectionModel();
+        int minSI = sm.getMinSelectionIndex();
+        int maxSI = sm.getMaxSelectionIndex();
+        int[] tmp = new int[1 + (maxSI - minSI)];
+        int n = 0;
+        for (int i = minSI; i <= maxSI; i++) {
+            if (sm.isSelectedIndex(i)) {
+                tmp[n++] = i;
+            }
+        }
+        int[] result = new int[n];
+        System.arraycopy(tmp, 0, result, 0, n);
+        return result;
+    }
+
     private ListSelectionListener listSelectionListener = new ListSelectionListener() {
 
         @Override
@@ -532,11 +604,12 @@ public class JGridList extends JPanel {
                         Object modelItem = model.getElementAt(modelIdx);
                         JPanel container = (JPanel) cellsContainer.getComponent(childIdx);
                         JComponent comp = (JComponent) container.getComponent(0);
-                        componentFactory.setSelectedStatus
+                        componentFactory.setSelectedStatusAndDropLocationMarker
                             (JGridList.this,
                              container,
                              modelItem,
                              selectionModel != null && selectionModel.isSelectedIndex(modelIdx),
+                             getDropLocationMarkerForIndex(modelIdx),
                              comp);
                     }
                 }
@@ -682,10 +755,234 @@ public class JGridList extends JPanel {
         return modelIndex < model.getSize() ? modelIndex : -1;
     }
     
-    //// setting up default (built-in) interactive UI actions the user may
-    //// user to change the list (e.g. clicking to select, cursor key).
-    //// subclasses may override.
+    //// Drag&Drop support
+    // Swing doesn't let us provide DnD support for JGridList that's API-compatible to that
+    // of Swing's own components like JList: http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6448332
+    // So we just provide drag support for now, and public APIs like setRenderedDropLocation()
+    // to let users more easily implement drop support in their own, external TransferHandlers
+    //
+    // Normally, the renderedDropLocation should be something that's managed internally by the list's
+    // DnD handling, so the getters and setters should not be public.
+    
+    public void setRenderedDropLocation(DropLocation renderedDropLocation) {
+        DropLocation old = this.renderedDropLocation;
+        this.renderedDropLocation = renderedDropLocation;
+        if (old != null) {
+            repaintCell(old.index);
+            repaintCellSelectionAndDropLocationMarker(old.index - 1);
+            repaintCellSelectionAndDropLocationMarker(old.index);
+            repaintCellSelectionAndDropLocationMarker(old.index + 1);
+        }
+        if (renderedDropLocation != null) {
+            repaintCell(renderedDropLocation.index);
+            repaintCellSelectionAndDropLocationMarker(renderedDropLocation.index - 1);
+            repaintCellSelectionAndDropLocationMarker(renderedDropLocation.index);
+            repaintCellSelectionAndDropLocationMarker(renderedDropLocation.index + 1);
+        }
+        //System.out.println("renderedDropLocation: " + renderedDropLocation);
+    }
+    
+    public DropLocation getRenderedDropLocation() {
+        return renderedDropLocation;
+    }
+    
+    //TODO: update renderedDropLocation on element removals etc.?
 
+    /**
+     * Get the current {@link DropLocationMarker} value for the model element at
+     * index <i>index</i>, as imposed by the {@link #getRenderedDropLocation()}.
+     * 
+     * @param index
+     * @return
+     */
+    protected DropLocationMarker getDropLocationMarkerForIndex(int index) {
+        DropLocation dl = getRenderedDropLocation();
+        if (dl == null) {
+            return DropLocationMarker.NONE;
+        }
+        if (! dl.isInsert()) {
+            return (index == dl.getIndex() ? DropLocationMarker.ON : DropLocationMarker.NONE);
+        } else {
+            int diff = dl.getIndex() - index;
+            switch (diff) {
+            case 0:
+                return DropLocationMarker.BEFORE;
+            case 1:
+                return DropLocationMarker.AFTER;
+            default:
+                return DropLocationMarker.NONE;
+            }
+        }
+    }
+    
+    private static final double DROPLOC_INSERT_RELATIVE_X = 0.2;
+    
+    public DropLocation getDropLocationFor(Point p) {
+        if (getModel() == null) {
+            return null;
+        }
+        p = SwingUtilities.convertPoint(this, p, cellsContainer);
+        int boxWidth = cellsContainer.getWidth() / nCols;
+        int boxHeight = cellsContainer.getHeight() / nRows;
+        int col = Math.min(nCols-1, p.x / boxWidth);
+        int row = Math.min(nRows-1, p.y / boxHeight);
+        int idx = getFirstDisplayedIdx() + row * nCols + col;
+        if (idx >= getModel().getSize()) {
+            return new DropLocation(getModel().getSize(), true, p);
+        }
+        double boxRelativeX = ((double)p.x - col*boxWidth) / boxWidth;
+        if (boxRelativeX < DROPLOC_INSERT_RELATIVE_X) {
+            return new DropLocation(idx, true, p);
+        } else if (boxRelativeX > 1 - DROPLOC_INSERT_RELATIVE_X) {
+            return new DropLocation(idx + 1, true, p);
+        } else {
+            return new DropLocation(idx, false, p);
+        }
+    }
+    
+    public void setDragEnabled(boolean b) {
+        dragEnabled = b;
+    }
+
+    public boolean getDragEnabled() {
+        return dragEnabled;
+    }
+
+    public boolean isDragEnabled() {
+        return dragEnabled;
+    }
+
+    public final void setDropMode(DropMode dropMode) {
+        if (dropMode != null) {
+            switch (dropMode) {
+                case ON:
+                case INSERT:
+                case ON_OR_INSERT:
+                    this.dropMode = dropMode;
+                    return;
+            }
+        }
+
+        throw new IllegalArgumentException(dropMode + ": Unsupported drop mode for JGridList");
+    }
+    
+    public DropMode getDropMode() {
+        return dropMode;
+    }
+    
+    public static class DropLocation extends TransferHandler.DropLocation {
+        private int index;
+        private boolean isInsert;
+        
+        public DropLocation(int index, boolean isInsert, Point p) {
+            super(p);
+            this.index = index;
+            this.isInsert = isInsert;
+        }
+        
+        public int getIndex() {
+            return index;
+        }
+        
+        public boolean isInsert() {
+            return isInsert;
+        }
+        
+        @Override
+        public String toString() {
+            return "(" + getIndex() + "," + isInsert() + ")";
+        }
+        
+    }
+
+    public static class DefaultTransferHandler extends TransferHandler {
+        protected JGridList list;
+        public DefaultTransferHandler(JGridList list) {
+            this.list = list;
+        }
+        @Override
+        protected Transferable createTransferable(JComponent c) {
+            StringBuffer txt = new StringBuffer(30);
+            boolean start = true;
+            for (Object elt : list.getSelectedValues()) {
+                if (!start) {
+                    txt.append("\n");
+                }
+                txt.append(elt.toString());
+                start = false;
+            }
+            return new StringSelection(txt.toString());
+        }
+    }
+
+    // drag gesture recognition
+
+    //recognize drag gestures in the JGridList's processMouse*Event methods rather than
+    //in the CellContainer's for now because doing the latter would prevent the events
+    //from bubbling up to the JGridList (so outside parties would no longer receive
+    //mouse events on the JGridList). We might manually re-dispatch the events on the
+    //JGridList to prevent that, though
+    
+    private Point lastPressed = null;
+    
+    @Override
+    protected void processMouseEvent(MouseEvent e) {
+        super.processMouseEvent(e);
+        if (e.isConsumed()) {
+            return;
+        }
+        if (!isDragEnabled()) {
+            return;
+        }
+        switch (e.getID()) {
+        case MouseEvent.MOUSE_PRESSED:
+            lastPressed = e.getPoint();
+            break;
+
+        default:
+            lastPressed = null;
+        }
+    }
+    
+    @Override
+    protected void processMouseMotionEvent(MouseEvent e) {
+        super.processMouseMotionEvent(e);
+        if (e.isConsumed()) {
+            return;
+        }
+        if (!isDragEnabled()) {
+            return;
+        }
+        if (getTransferHandler() == null) {
+            return;
+        }
+        switch (e.getID()) {
+        case MouseEvent.MOUSE_DRAGGED:
+            if (lastPressed != null) {
+                if (e.getPoint().distance(lastPressed) > 5) {
+                    int action = (0 != (e.getModifiers() & MouseEvent.CTRL_MASK) ? TransferHandler.COPY : TransferHandler.MOVE);
+                    //int action = TransferHandler.COPY;
+                    getTransferHandler().exportAsDrag(this, SwingUtilities.convertMouseEvent(cellsContainer, e, this), action);
+                    lastPressed = null;
+                }
+            }
+            break;
+
+        default:
+            lastPressed = null;
+        }
+    }
+
+
+    //TODO: How to account for the getDropMode()? Consult JList for inspiration
+
+    //// default UI interactions
+
+    /**
+     * Called during initialization for setting up default interactive UI
+     * actions the user may use to change the list (e.g. clicking to select,
+     * cursor key). Subclasses may override.
+     */
     protected void setupUiInteractions() {
         this.setFocusable(true);
         

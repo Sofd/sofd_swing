@@ -11,7 +11,9 @@ public abstract class AbstractBgColorSelectionGridListComponentFactory implement
     }
 
     @Override
-    public void setSelectedStatus(JGridList source, JPanel parent, Object modelItem, boolean selected, JComponent component) {
+    public void setSelectedStatusAndDropLocationMarker(JGridList source,
+            JPanel parent, Object modelItem, boolean selected,
+            DropLocationMarker marker, JComponent component) {
         if (selected) {
             component.setForeground(UIManager.getColor("List.selectionForeground"));
             component.setBackground(UIManager.getColor("List.selectionBackground"));

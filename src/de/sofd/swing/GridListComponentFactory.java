@@ -43,37 +43,44 @@ public interface GridListComponentFactory {
      */
     JComponent createComponent(JGridList source, JPanel parent, Object modelItem);
 
+    public static enum DropLocationMarker {BEFORE, ON, AFTER, NONE};
+
     /**
-     * The "selected" state of a component previously created via
+     * The "selected" state OR the drop location marker state (see below) of a
+     * component previously created via
      * {@link #createComponent(JGridList, JPanel, Object) createComponent} is to
      * be set. The implementation should change the visual representation of the
-     * component to reflect the new selected state (change background color,
-     * draw a border or whatever).
+     * component to reflect the new state (change background color, draw a
+     * border or whatever).
+     * <p>
+     * The drop location marker state of a component reflects whether or not a
+     * drop location marker is present on or directly adjacent to the component.
      * 
      * @param source
      *            JGridList for which the component is to be created
      * @param parent
      *            JPanel inside which the component resides. The same panel was
-     *            passed to
-     *            {@link #createComponent(JGridList, JPanel, Object) createComponent}
-     *            when the component was created
+     *            passed to {@link #createComponent(JGridList, JPanel, Object)
+     *            createComponent} when the component was created
      * @param modelItem
      *            item (of the JGridList's ListModel) that the component
      *            represents. The same item was passed to
-     *            {@link #createComponent(JGridList, JPanel, Object) createComponent}
-     *            when the component was created
+     *            {@link #createComponent(JGridList, JPanel, Object)
+     *            createComponent} when the component was created
      * @param selected
      *            new selected state (true=selected, false=unselected)
+     * @param marker
+     *            new drop location marker state
      * @param component
      *            the component. It's the one that was returned by
-     *            {@link #createComponent(JGridList, JPanel, Object) createComponent}
-     *            when the component was created. This is meant as a convenience
-     *            so the GridListComponentFactory implementation doesn't have to
-     *            keep track of the association between model items and
-     *            components itself
+     *            {@link #createComponent(JGridList, JPanel, Object)
+     *            createComponent} when the component was created. This is meant
+     *            as a convenience so the GridListComponentFactory
+     *            implementation doesn't have to keep track of the association
+     *            between model items and components itself
      */
-    void setSelectedStatus(JGridList source, JPanel parent, Object modelItem, boolean selected, JComponent component);
-
+    void setSelectedStatusAndDropLocationMarker(JGridList source, JPanel parent, Object modelItem, boolean selected, DropLocationMarker marker, JComponent component);
+    
     void parentUiStateChanged(JGridList source, JPanel parent, /*Object modelItem, */JComponent component);
     
     /**
