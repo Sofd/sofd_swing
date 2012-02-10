@@ -1,0 +1,8 @@
+\.orig$
+\.old$
+~$
+build/
+bin/
+dist/
+tmp/
+
